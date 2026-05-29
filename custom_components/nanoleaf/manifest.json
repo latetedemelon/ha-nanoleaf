@@ -5,7 +5,7 @@
   "config_flow": true,
   "documentation": "https://github.com/latetedemelon/ha-nanoleaf",
   "homekit": {
-    "models": ["NL29", "NL42", "NL47", "NL48", "NL52", "NL59", "NL69", "NL81"]
+    "models": ["NL22", "NL29", "NL42", "NL47", "NL48", "NL52", "NL59", "NL69", "NL81"]
   },
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/latetedemelon/ha-nanoleaf/issues",
@@ -32,5 +32,5 @@
     }
   ],
   "zeroconf": ["_nanoleafms._tcp.local.", "_nanoleafapi._tcp.local."],
-  "version": "1.1.0"
+  "version": "1.2.0"
 }

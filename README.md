@@ -15,16 +15,18 @@ This is a custom component for Home Assistant that provides Nanoleaf smart light
   `nanoleaf.set_panel_colors` and `nanoleaf.blink_panels` services
   (powered by the fork's Digital Twin)
 - **Panel orientation** control (`number` entity) for panel devices
-- **Rhythm / audio module** source select and an "active" binary sensor
-  (when the device has a rhythm module)
-- Touch gesture support for compatible models (NL29, NL42, NL52)
+- **Music sync** — automatic microphone detection, rhythm source select,
+  "active" binary sensor, and a sound-reactive **Music sync effect** picker
+- Touch gesture support for Canvas, Shapes and Elements (NL29/42/47/48/52)
+- Works with any OpenAPI device (Aurora/NL22 through Lines/NL59)
 - Device triggers and events
 - Automatic discovery via SSDP and Zeroconf
 - Configuration flow for easy setup
-- Diagnostics support
+- Diagnostics support (includes mic/rhythm + panel capabilities)
 
-> **Dependency note:** the per-panel / orientation / rhythm features require the
-> wired aionanoleaf fork (>= 0.4.0), which is now on `master`. The
+> **Dependency note:** the per-panel / orientation / rhythm / music-sync
+> features require the wired aionanoleaf fork (>= 0.5.0), which is on `master`.
+> The
 > `manifest.json` pins the dependency to
 > `aionanoleaf.git@master`; Home Assistant installs it directly from GitHub on
 > setup. (Pin to a tagged release once one is published for reproducible
@@ -164,9 +166,56 @@ data:
 - **Panel orientation** (`number.<device>_panel_orientation`) — global layout
   orientation in degrees, for panel devices.
 - **Rhythm source** (`select.<device>_rhythm_source`) — Microphone / Aux,
-  created only when the device has a rhythm module.
+  created only when the device has a rhythm module. Aux is only offered when
+  the module actually has a 3.5mm input.
 - **Rhythm active** (`binary_sensor.<device>_rhythm_active`) — whether the
   rhythm module is currently active.
+- **Music sync effect** (`select.<device>_music_sync_effect`) — see below.
+
+## Music sync
+
+Nanoleaf panels react to music using the device **microphone** (built-in on
+Canvas, Shapes, Elements and Lines; an add-on Rhythm module on the original
+Light Panels/Aurora). The integration detects this automatically:
+
+- If your device has a microphone/rhythm module, the **Rhythm source**,
+  **Rhythm active** and (when sound-reactive effects are found) **Music sync
+  effect** entities appear. If they don't appear, the device has no mic.
+- The integration discovers the device's **sound-reactive effects**
+  (`pluginType == "rhythm"`). Selecting one from the **Music sync effect**
+  entity switches the source to the microphone and starts music sync:
+
+```yaml
+# Start music sync with a sound-reactive effect
+service: select.select_option
+target:
+  entity_id: select.shapes_music_sync_effect
+data:
+  option: "Pulse Pop Beats"   # one of your device's sound-reactive effects
+```
+
+You can also do it manually: set **Rhythm source** to *Microphone* and pick a
+sound-reactive effect from the light's effect list.
+
+> The set of sound-reactive effects is read once at startup; reload the
+> integration after creating new music effects in the Nanoleaf app. Effect
+> discovery is best-effort — if your firmware reports effects differently the
+> *Music sync effect* entity simply won't appear, and manual music sync still
+> works.
+
+## Supported hardware
+
+Any Nanoleaf device that speaks the local OpenAPI works (add it by IP if it
+isn't auto-discovered):
+
+- Light Panels / Aurora (NL22) — with the add-on Rhythm module for music sync
+- Canvas (NL29) — touch
+- Shapes: Hexagons (NL42), Triangles (NL47), Mini Triangles (NL48) — touch
+- Elements (NL52) — touch
+- Lines (NL59)
+
+Touch gestures are enabled on Canvas, Shapes and Elements. Per-panel control,
+orientation and rhythm entities appear only on devices that support them.
 
 ## License
 

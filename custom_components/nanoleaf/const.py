@@ -4,7 +4,10 @@ DOMAIN = "nanoleaf"
 
 NANOLEAF_EVENT = f"{DOMAIN}_event"
 
-TOUCH_MODELS = {"NL29", "NL42", "NL52"}
+# Touch-capable model prefixes: Canvas (NL29), Shapes Hexagons/Triangles/Mini
+# (NL42/NL47/NL48) and Elements (NL52). Lines (NL59) and Light Panels (NL22)
+# have no touch sensors.
+TOUCH_MODELS = {"NL29", "NL42", "NL47", "NL48", "NL52"}
 
 TOUCH_GESTURE_TRIGGER_MAP = {
     2: "swipe_up",

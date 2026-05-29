@@ -69,6 +69,9 @@
           "microphone": "Microphone",
           "aux": "Aux"
         }
+      },
+      "music_effect": {
+        "name": "Music sync effect"
       }
     }
   },

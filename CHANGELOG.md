@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-05-29
+
+Broader hardware support and music sync. Requires aionanoleaf >= 0.5.0.
+
+### Added
+- **Music sync effect** `select` — lists the device's sound-reactive effects
+  (`pluginType == "rhythm"`); selecting one sets the microphone source and
+  starts music sync. Created only when such effects are discovered.
+- Automatic microphone/rhythm detection; the **Rhythm source** select now
+  offers *Aux* only when the module reports a 3.5mm input.
+- Diagnostics now include rhythm, orientation and panel capabilities.
+
+### Changed
+- `TOUCH_MODELS` broadened to Canvas + all Shapes + Elements
+  (NL29/42/47/48/52).
+- HomeKit discovery now includes the original Light Panels / Aurora (NL22).
+- `manifest.json` requires aionanoleaf >= 0.5.0; component bumped to 1.2.0.
+
+### Notes
+- Effect discovery is best-effort (uses the `requestAll` command); if a device
+  reports nothing, the Music sync effect entity is simply not created and manual
+  music sync (mic source + a sound-reactive effect) still works.
+
 ## [1.1.0] - 2026-05-29
 
 Consolidates the two prior component branches and exposes the aionanoleaf
@@ -83,5 +106,6 @@ fork's new functionality in Home Assistant.
 - Automation examples for touch gestures
 - Troubleshooting section
 
+[1.2.0]: https://github.com/latetedemelon/ha-nanoleaf/releases/tag/v1.2.0
 [1.1.0]: https://github.com/latetedemelon/ha-nanoleaf/releases/tag/v1.1.0
 [1.0.0]: https://github.com/latetedemelon/ha-nanoleaf/releases/tag/v1.0.0
