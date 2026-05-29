@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-29
+
+Links the panels to Home Assistant's media players.
+
+### Added
+- **`nanoleaf.sync_album_art` service** — samples the dominant colours of a
+  media player's current album art and spreads them across the panels (via the
+  Digital Twin). Works with any `media_player` (Spotify, Sonos, Music Assistant,
+  …).
+- **Automation blueprint** (`blueprints/automation/nanoleaf/album_art_sync.yaml`)
+  — recolours the panels on every track change and optionally turns them off
+  when playback stops.
+
+### Changed
+- `manifest.json` now also requires `pillow` (bundled with Home Assistant) for
+  album-art colour extraction; component bumped to 1.3.0.
+
 ## [1.2.0] - 2026-05-29
 
 Broader hardware support and music sync. Requires aionanoleaf >= 0.5.0.
@@ -106,6 +123,7 @@ fork's new functionality in Home Assistant.
 - Automation examples for touch gestures
 - Troubleshooting section
 
+[1.3.0]: https://github.com/latetedemelon/ha-nanoleaf/releases/tag/v1.3.0
 [1.2.0]: https://github.com/latetedemelon/ha-nanoleaf/releases/tag/v1.2.0
 [1.1.0]: https://github.com/latetedemelon/ha-nanoleaf/releases/tag/v1.1.0
 [1.0.0]: https://github.com/latetedemelon/ha-nanoleaf/releases/tag/v1.0.0

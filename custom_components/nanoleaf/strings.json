@@ -81,6 +81,12 @@
     },
     "unknown_panels": {
       "message": "Unknown panel ID(s): {panels}. Valid panel IDs are: {valid}."
+    },
+    "unknown_media_player": {
+      "message": "{entity_id} is not a media player."
+    },
+    "no_album_art": {
+      "message": "{entity_id} has no album art to read colours from."
     }
   },
   "services": {
@@ -127,6 +133,20 @@
         "brightness": {
           "name": "Brightness",
           "description": "Optional brightness overlay applied to the color (0-100%)."
+        }
+      }
+    },
+    "sync_album_art": {
+      "name": "Sync album art",
+      "description": "Paints the panels with the dominant colors of a media player's current album art.",
+      "fields": {
+        "media_player": {
+          "name": "Media player",
+          "description": "The media player whose now-playing album art should be used."
+        },
+        "brightness": {
+          "name": "Brightness",
+          "description": "Optional brightness overlay applied to the colors (0-100%)."
         }
       }
     }

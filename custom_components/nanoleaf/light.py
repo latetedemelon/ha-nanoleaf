@@ -17,13 +17,16 @@ from homeassistant.components.light import (
     LightEntity,
     LightEntityFeature,
 )
+from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import (
+    ALBUM_ART_COLORS,
     ATTR_DURATION,
+    ATTR_MEDIA_PLAYER,
     ATTR_PANEL_ID,
     ATTR_PANELS,
     ATTR_RGB_COLOR,
@@ -31,9 +34,11 @@ from .const import (
     SERVICE_BLINK_PANELS,
     SERVICE_SET_ALL_PANELS,
     SERVICE_SET_PANEL_COLORS,
+    SERVICE_SYNC_ALBUM_ART,
 )
 from .coordinator import NanoleafConfigEntry, NanoleafCoordinator
 from .entity import NanoleafEntity
+from .media import async_get_album_palette
 
 RESERVED_EFFECTS = ("*Solid*", "*Static*", "*Dynamic*")
 DEFAULT_NAME = "Nanoleaf"
@@ -69,6 +74,11 @@ BLINK_PANELS_SCHEMA = {
     vol.Optional(ATTR_BRIGHTNESS): _PANEL_BRIGHTNESS,
 }
 
+SYNC_ALBUM_ART_SCHEMA = {
+    vol.Required(ATTR_MEDIA_PLAYER): cv.entity_domain(MEDIA_PLAYER_DOMAIN),
+    vol.Optional(ATTR_BRIGHTNESS): _PANEL_BRIGHTNESS,
+}
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -90,6 +100,9 @@ async def async_setup_entry(
     )
     platform.async_register_entity_service(
         SERVICE_BLINK_PANELS, BLINK_PANELS_SCHEMA, "async_blink_panels"
+    )
+    platform.async_register_entity_service(
+        SERVICE_SYNC_ALBUM_ART, SYNC_ALBUM_ART_SCHEMA, "async_sync_album_art"
     )
 
 
@@ -263,6 +276,31 @@ class NanoleafLight(NanoleafEntity, LightEntity):
         except NanoleafException as err:
             raise HomeAssistantError(str(err)) from err
         await self.coordinator.async_request_refresh()
+
+    async def async_sync_album_art(
+        self, media_player: str, brightness: int | None = None
+    ) -> None:
+        """Paint the panels with the dominant colours of a player's album art."""
+        try:
+            palette = await async_get_album_palette(
+                self.hass, media_player, ALBUM_ART_COLORS
+            )
+        except ValueError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unknown_media_player",
+                translation_placeholders={"entity_id": media_player},
+            ) from err
+        if not palette:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="no_album_art",
+                translation_placeholders={"entity_id": media_player},
+            )
+        twin = await self._async_twin()
+        for index, panel_id in enumerate(twin.ids):
+            await twin.set_color(panel_id, palette[index % len(palette)])
+        await self._async_sync(twin, brightness)
 
     async def _async_sync(self, twin: DigitalTwin, brightness: int | None) -> None:
         """Write the twin's colours to the device and refresh state."""

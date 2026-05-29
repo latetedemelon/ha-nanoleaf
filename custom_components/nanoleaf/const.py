@@ -27,6 +27,7 @@ RHYTHM_INT_TO_MODE = {0: RHYTHM_MODE_MICROPHONE, 1: RHYTHM_MODE_AUX}
 SERVICE_SET_ALL_PANELS = "set_all_panels"
 SERVICE_SET_PANEL_COLORS = "set_panel_colors"
 SERVICE_BLINK_PANELS = "blink_panels"
+SERVICE_SYNC_ALBUM_ART = "sync_album_art"
 
 # Service field names. ``brightness`` and ``transition`` reuse the light
 # platform's constants (same string keys) and are not redefined here.
@@ -34,3 +35,7 @@ ATTR_RGB_COLOR = "rgb_color"
 ATTR_PANELS = "panels"
 ATTR_PANEL_ID = "panel_id"
 ATTR_DURATION = "duration"
+ATTR_MEDIA_PLAYER = "media_player"
+
+# Number of dominant album-art colors spread across the panels.
+ALBUM_ART_COLORS = 6

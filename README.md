@@ -17,6 +17,9 @@ This is a custom component for Home Assistant that provides Nanoleaf smart light
 - **Panel orientation** control (`number` entity) for panel devices
 - **Music sync** — automatic microphone detection, rhythm source select,
   "active" binary sensor, and a sound-reactive **Music sync effect** picker
+- **Media-player album-art sync** — colour the panels from the now-playing
+  album cover of any `media_player` (Spotify/Sonos/Music Assistant/…), via a
+  service and an importable automation blueprint
 - Touch gesture support for Canvas, Shapes and Elements (NL29/42/47/48/52)
 - Works with any OpenAPI device (Aurora/NL22 through Lines/NL59)
 - Device triggers and events
@@ -202,6 +205,39 @@ sound-reactive effect from the light's effect list.
 > discovery is best-effort — if your firmware reports effects differently the
 > *Music sync effect* entity simply won't appear, and manual music sync still
 > works.
+
+## Link to Home Assistant media players (album-art sync)
+
+Home Assistant's "music centre" is the `media_player` domain — Spotify, Sonos,
+Chromecast, Apple Music, **Music Assistant**, etc. This integration can colour
+your panels from whatever a media player is playing:
+
+**Service** — `nanoleaf.sync_album_art` samples the dominant colours of the
+current **album art** and spreads them across the panels:
+
+```yaml
+service: nanoleaf.sync_album_art
+target:
+  entity_id: light.shapes
+data:
+  media_player: media_player.spotify
+  brightness: 80          # optional, 0-100
+```
+
+**Automatic (blueprint)** — to follow playback hands-free, import the included
+blueprint. It recolours the panels on every track change and can turn them off
+when the music stops:
+
+1. In Home Assistant go to **Settings → Automations & Scenes → Blueprints →
+   Import Blueprint**.
+2. Paste the blueprint URL:
+   `https://github.com/latetedemelon/ha-nanoleaf/blob/main/blueprints/automation/nanoleaf/album_art_sync.yaml`
+3. Create an automation from it, choosing your media player and Nanoleaf light.
+
+> Album-art colours come from the media player's artwork via Home Assistant's
+> built-in image support (Pillow); a player with no artwork is reported back as
+> an error. This pairs nicely with the mic-based **Music sync effect** above —
+> use album-art colours for ambient mood and the mic effect for beat reactivity.
 
 ## Supported hardware
 
