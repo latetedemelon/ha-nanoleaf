@@ -1,0 +1,137 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "data": {
+          "host": "[%key:common::config_flow::data::host%]"
+        },
+        "data_description": {
+          "host": "The hostname or IP address of your Nanoleaf device."
+        }
+      },
+      "link": {
+        "title": "Link Nanoleaf",
+        "description": "Press and hold the power button on your Nanoleaf for 5 seconds until the button LEDs start flashing, then select **Submit** within 30 seconds."
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "not_allowing_new_tokens": "Nanoleaf is not allowing new tokens, follow the instructions above.",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "invalid_token": "[%key:common::config_flow::error::invalid_access_token%]",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "swipe_up": "[%key:component::nanoleaf::entity::event::touch::state_attributes::event_type::state::swipe_up%]",
+      "swipe_down": "[%key:component::nanoleaf::entity::event::touch::state_attributes::event_type::state::swipe_down%]",
+      "swipe_left": "[%key:component::nanoleaf::entity::event::touch::state_attributes::event_type::state::swipe_left%]",
+      "swipe_right": "[%key:component::nanoleaf::entity::event::touch::state_attributes::event_type::state::swipe_right%]"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "rhythm_active": {
+        "name": "Rhythm active"
+      }
+    },
+    "event": {
+      "touch": {
+        "name": "Touch gesture",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "swipe_up": "Swipe up",
+              "swipe_down": "Swipe down",
+              "swipe_left": "Swipe left",
+              "swipe_right": "Swipe right"
+            }
+          }
+        }
+      }
+    },
+    "number": {
+      "global_orientation": {
+        "name": "Panel orientation"
+      }
+    },
+    "select": {
+      "rhythm_mode": {
+        "name": "Rhythm source",
+        "state": {
+          "microphone": "Microphone",
+          "aux": "Aux"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "no_panels": {
+      "message": "This Nanoleaf device does not expose individually addressable panels."
+    },
+    "unknown_panels": {
+      "message": "Unknown panel ID(s): {panels}. Valid panel IDs are: {valid}."
+    }
+  },
+  "services": {
+    "set_all_panels": {
+      "name": "Set all panels",
+      "description": "Sets every panel of a Nanoleaf panel device to a single color as a static scene.",
+      "fields": {
+        "rgb_color": {
+          "name": "Color",
+          "description": "The RGB color to apply to all panels."
+        },
+        "brightness": {
+          "name": "Brightness",
+          "description": "Optional brightness overlay applied to the color (0-100%)."
+        }
+      }
+    },
+    "set_panel_colors": {
+      "name": "Set panel colors",
+      "description": "Sets individual panel colors as a static scene. Panels that are not listed are turned off.",
+      "fields": {
+        "panels": {
+          "name": "Panels",
+          "description": "A list of items, each with a panel_id and an rgb_color."
+        },
+        "brightness": {
+          "name": "Brightness",
+          "description": "Optional brightness overlay applied to the colors (0-100%)."
+        }
+      }
+    },
+    "blink_panels": {
+      "name": "Blink panels",
+      "description": "Briefly shows a color on all panels, then restores the previously selected effect.",
+      "fields": {
+        "rgb_color": {
+          "name": "Color",
+          "description": "The RGB color to flash on all panels."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long to show the color before restoring, in seconds."
+        },
+        "brightness": {
+          "name": "Brightness",
+          "description": "Optional brightness overlay applied to the color (0-100%)."
+        }
+      }
+    }
+  },
+  "issues": {
+    "deprecated_device_trigger": {
+      "title": "Nanoleaf device trigger is deprecated",
+      "description": "The Nanoleaf device trigger is deprecated and will be removed in a future release. You can now use the gesture event entity to build automations."
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "rhythm_active": {
+        "default": "mdi:music-note"
+      }
+    },
+    "event": {
+      "touch": {
+        "default": "mdi:gesture"
+      }
+    },
+    "light": {
+      "light": {
+        "default": "mdi:triangle-outline"
+      }
+    },
+    "number": {
+      "global_orientation": {
+        "default": "mdi:screen-rotation"
+      }
+    },
+    "select": {
+      "rhythm_mode": {
+        "default": "mdi:microphone"
+      }
+    }
+  },
+  "services": {
+    "set_all_panels": {
+      "service": "mdi:palette"
+    },
+    "set_panel_colors": {
+      "service": "mdi:palette-advanced"
+    },
+    "blink_panels": {
+      "service": "mdi:lightbulb-on"
+    }
+  }
+}
