@@ -11,11 +11,24 @@ This is a custom component for Home Assistant that provides Nanoleaf smart light
 - Full Nanoleaf integration with Home Assistant
 - Support for Nanoleaf Aurora, Canvas, Shapes, and other models
 - Light control (on/off, brightness, color, effects)
+- **Per-panel color control** via the `nanoleaf.set_all_panels`,
+  `nanoleaf.set_panel_colors` and `nanoleaf.blink_panels` services
+  (powered by the fork's Digital Twin)
+- **Panel orientation** control (`number` entity) for panel devices
+- **Rhythm / audio module** source select and an "active" binary sensor
+  (when the device has a rhythm module)
 - Touch gesture support for compatible models (NL29, NL42, NL52)
 - Device triggers and events
 - Automatic discovery via SSDP and Zeroconf
 - Configuration flow for easy setup
 - Diagnostics support
+
+> **Dependency note:** the per-panel / orientation / rhythm features require the
+> wired aionanoleaf fork (>= 0.4.0), which is now on `master`. The
+> `manifest.json` pins the dependency to
+> `aionanoleaf.git@master`; Home Assistant installs it directly from GitHub on
+> setup. (Pin to a tagged release once one is published for reproducible
+> installs.)
 
 ## Installation
 
@@ -106,6 +119,54 @@ automation:
         target:
           entity_id: light.living_room
 ```
+
+## Per-panel control & advanced features
+
+On panel devices (Shapes, Canvas, Elements, Lines) this integration exposes the
+fork's enhanced functionality.
+
+### Services
+
+| Service | Description |
+| --- | --- |
+| `nanoleaf.set_all_panels` | Set every panel to one RGB color (static scene). |
+| `nanoleaf.set_panel_colors` | Set individual panels by `panel_id`. Unlisted panels are turned off. |
+| `nanoleaf.blink_panels` | Briefly flash a color on all panels, then restore the previous effect. |
+
+Panel IDs can be read from the integration's diagnostics download.
+
+```yaml
+# Paint two panels and turn the rest off
+service: nanoleaf.set_panel_colors
+target:
+  entity_id: light.shapes
+data:
+  panels:
+    - panel_id: 4231
+      rgb_color: [255, 0, 0]
+    - panel_id: 12044
+      rgb_color: [0, 0, 255]
+  brightness: 80
+```
+
+```yaml
+# Flash all panels green for 3 seconds, then restore the prior effect
+service: nanoleaf.blink_panels
+target:
+  entity_id: light.shapes
+data:
+  rgb_color: [0, 255, 0]
+  duration: 3
+```
+
+### Additional entities
+
+- **Panel orientation** (`number.<device>_panel_orientation`) — global layout
+  orientation in degrees, for panel devices.
+- **Rhythm source** (`select.<device>_rhythm_source`) — Microphone / Aux,
+  created only when the device has a rhythm module.
+- **Rhythm active** (`binary_sensor.<device>_rhythm_active`) — whether the
+  rhythm module is currently active.
 
 ## License
 

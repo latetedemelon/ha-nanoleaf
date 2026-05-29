@@ -3,13 +3,14 @@
   "name": "Nanoleaf",
   "codeowners": ["@latetedemelon"],
   "config_flow": true,
-  "documentation": "https://www.home-assistant.io/integrations/nanoleaf",
+  "documentation": "https://github.com/latetedemelon/ha-nanoleaf",
   "homekit": {
     "models": ["NL29", "NL42", "NL47", "NL48", "NL52", "NL59", "NL69", "NL81"]
   },
   "iot_class": "local_push",
+  "issue_tracker": "https://github.com/latetedemelon/ha-nanoleaf/issues",
   "loggers": ["aionanoleaf"],
-  "requirements": ["aionanoleaf @ git+https://github.com/latetedemelon/aionanoleaf.git@main"],
+  "requirements": ["aionanoleaf @ git+https://github.com/latetedemelon/aionanoleaf.git@master"],
   "ssdp": [
     {
       "st": "Nanoleaf_aurora:light"
@@ -31,5 +32,5 @@
     }
   ],
   "zeroconf": ["_nanoleafms._tcp.local.", "_nanoleafapi._tcp.local."],
-  "version": "1.0.0"
+  "version": "1.1.0"
 }

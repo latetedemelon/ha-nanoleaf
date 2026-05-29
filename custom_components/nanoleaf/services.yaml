@@ -1,0 +1,101 @@
+set_all_panels:
+  name: Set all panels
+  description: >-
+    Set every panel of a Nanoleaf panel device (Shapes, Canvas, Elements,
+    Lines) to a single colour as a static scene.
+  target:
+    entity:
+      integration: nanoleaf
+      domain: light
+  fields:
+    rgb_color:
+      name: Color
+      description: The RGB color to apply to all panels.
+      required: true
+      example: "[255, 0, 0]"
+      selector:
+        color_rgb:
+    brightness:
+      name: Brightness
+      description: Optional brightness overlay applied to the colour (0-100%).
+      required: false
+      example: 80
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+
+set_panel_colors:
+  name: Set panel colors
+  description: >-
+    Set individual panel colours as a static scene. Panels that are not listed
+    are turned off.
+  target:
+    entity:
+      integration: nanoleaf
+      domain: light
+  fields:
+    panels:
+      name: Panels
+      description: >-
+        A list of panel/color pairs. Each item needs a panel_id and an
+        rgb_color. Panel IDs can be read from the integration diagnostics.
+      required: true
+      example: |-
+        - panel_id: 4231
+          rgb_color: [255, 0, 0]
+        - panel_id: 12044
+          rgb_color: [0, 0, 255]
+      selector:
+        object:
+    brightness:
+      name: Brightness
+      description: Optional brightness overlay applied to the colours (0-100%).
+      required: false
+      example: 80
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+
+blink_panels:
+  name: Blink panels
+  description: >-
+    Briefly show a colour on all panels, then restore the previously selected
+    effect.
+  target:
+    entity:
+      integration: nanoleaf
+      domain: light
+  fields:
+    rgb_color:
+      name: Color
+      description: The RGB color to flash on all panels.
+      required: true
+      example: "[255, 255, 0]"
+      selector:
+        color_rgb:
+    duration:
+      name: Duration
+      description: How long to show the colour before restoring, in seconds.
+      required: false
+      default: 2
+      example: 2
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 0.5
+          unit_of_measurement: s
+    brightness:
+      name: Brightness
+      description: Optional brightness overlay applied to the colour (0-100%).
+      required: false
+      example: 80
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"

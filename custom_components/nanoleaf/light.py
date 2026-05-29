@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from aionanoleaf import DigitalTwin, NanoleafException
+import voluptuous as vol
+
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP_KELVIN,
@@ -15,13 +18,56 @@ from homeassistant.components.light import (
     LightEntityFeature,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .const import (
+    ATTR_DURATION,
+    ATTR_PANEL_ID,
+    ATTR_PANELS,
+    ATTR_RGB_COLOR,
+    DOMAIN,
+    SERVICE_BLINK_PANELS,
+    SERVICE_SET_ALL_PANELS,
+    SERVICE_SET_PANEL_COLORS,
+)
 from .coordinator import NanoleafConfigEntry, NanoleafCoordinator
 from .entity import NanoleafEntity
 
 RESERVED_EFFECTS = ("*Solid*", "*Static*", "*Dynamic*")
 DEFAULT_NAME = "Nanoleaf"
+
+# (R, G, B) triplet of bytes, coerced to a tuple.
+_RGB = vol.All(vol.ExactSequence((cv.byte, cv.byte, cv.byte)), vol.Coerce(tuple))
+# Nanoleaf brightness overlay is a 0..100 percentage, distinct from light 0..255.
+_PANEL_BRIGHTNESS = vol.All(vol.Coerce(int), vol.Range(min=0, max=100))
+
+SET_ALL_PANELS_SCHEMA = {
+    vol.Required(ATTR_RGB_COLOR): _RGB,
+    vol.Optional(ATTR_BRIGHTNESS): _PANEL_BRIGHTNESS,
+}
+
+SET_PANEL_COLORS_SCHEMA = {
+    vol.Required(ATTR_PANELS): vol.All(
+        cv.ensure_list,
+        [
+            vol.Schema(
+                {
+                    vol.Required(ATTR_PANEL_ID): cv.positive_int,
+                    vol.Required(ATTR_RGB_COLOR): _RGB,
+                }
+            )
+        ],
+    ),
+    vol.Optional(ATTR_BRIGHTNESS): _PANEL_BRIGHTNESS,
+}
+
+BLINK_PANELS_SCHEMA = {
+    vol.Required(ATTR_RGB_COLOR): _RGB,
+    vol.Optional(ATTR_DURATION, default=2.0): cv.positive_float,
+    vol.Optional(ATTR_BRIGHTNESS): _PANEL_BRIGHTNESS,
+}
 
 
 async def async_setup_entry(
@@ -29,8 +75,22 @@ async def async_setup_entry(
     entry: NanoleafConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up the Nanoleaf light."""
+    """Set up the Nanoleaf light and its per-panel services."""
     async_add_entities([NanoleafLight(entry.runtime_data)])
+
+    # Per-panel "Digital Twin" services from the aionanoleaf fork. They are
+    # registered on the light entity so they can be targeted by entity_id,
+    # device_id or area_id like any other entity service.
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_service(
+        SERVICE_SET_ALL_PANELS, SET_ALL_PANELS_SCHEMA, "async_set_all_panels"
+    )
+    platform.async_register_entity_service(
+        SERVICE_SET_PANEL_COLORS, SET_PANEL_COLORS_SCHEMA, "async_set_panel_colors"
+    )
+    platform.async_register_entity_service(
+        SERVICE_BLINK_PANELS, BLINK_PANELS_SCHEMA, "async_blink_panels"
+    )
 
 
 class NanoleafLight(NanoleafEntity, LightEntity):
@@ -132,3 +192,82 @@ class NanoleafLight(NanoleafEntity, LightEntity):
         transition: float | None = kwargs.get(ATTR_TRANSITION)
         await self._nanoleaf.turn_off(None if transition is None else int(transition))
         await self.coordinator.async_refresh()
+
+    # --- Per-panel "Digital Twin" services (aionanoleaf fork) ------------- #
+
+    async def _async_twin(self) -> DigitalTwin:
+        """Build a Digital Twin, mapping fork errors to HA errors."""
+        try:
+            return await DigitalTwin.create(self._nanoleaf)
+        except RuntimeError as err:
+            # Raised by aionanoleaf when the device has no addressable panels.
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="no_panels",
+            ) from err
+        except NanoleafException as err:
+            raise HomeAssistantError(str(err)) from err
+
+    async def async_set_all_panels(
+        self,
+        rgb_color: tuple[int, int, int],
+        brightness: int | None = None,
+    ) -> None:
+        """Set every panel to a single colour."""
+        twin = await self._async_twin()
+        await twin.set_all_colors(rgb_color)
+        await self._async_sync(twin, brightness)
+
+    async def async_set_panel_colors(
+        self,
+        panels: list[dict[str, Any]],
+        brightness: int | None = None,
+    ) -> None:
+        """Set individual panel colours. Unlisted panels are turned off."""
+        twin = await self._async_twin()
+        unknown: list[int] = []
+        for panel in panels:
+            panel_id = panel[ATTR_PANEL_ID]
+            try:
+                await twin.set_color(panel_id, panel[ATTR_RGB_COLOR])
+            except ValueError:
+                unknown.append(panel_id)
+        if unknown:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unknown_panels",
+                translation_placeholders={
+                    "panels": ", ".join(str(p) for p in sorted(unknown)),
+                    "valid": ", ".join(str(p) for p in twin.ids),
+                },
+            )
+        await self._async_sync(twin, brightness)
+
+    async def async_blink_panels(
+        self,
+        rgb_color: tuple[int, int, int],
+        duration: float = 2.0,
+        brightness: int | None = None,
+    ) -> None:
+        """Briefly show a colour on all panels, then restore the prior effect."""
+        twin = await self._async_twin()
+        await twin.set_all_colors(rgb_color)
+        try:
+            # duration_ms is a real millisecond sleep in aionanoleaf; the
+            # restore transition uses the library default to avoid the
+            # ambiguous animation-time unit.
+            await twin.apply_temp(
+                duration_ms=int(duration * 1000),
+                brightness=brightness,
+            )
+        except NanoleafException as err:
+            raise HomeAssistantError(str(err)) from err
+        await self.coordinator.async_request_refresh()
+
+    async def _async_sync(self, twin: DigitalTwin, brightness: int | None) -> None:
+        """Write the twin's colours to the device and refresh state."""
+        try:
+            await twin.sync(brightness=brightness)
+        except NanoleafException as err:
+            raise HomeAssistantError(str(err)) from err
+        await self.coordinator.async_request_refresh()
