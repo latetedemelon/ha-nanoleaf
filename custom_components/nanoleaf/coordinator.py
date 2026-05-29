@@ -7,6 +7,7 @@ import logging
 from typing import Any
 
 from aionanoleaf import (
+    EffectsClient,
     InvalidToken,
     LayoutClient,
     Nanoleaf,
@@ -49,9 +50,12 @@ class NanoleafCoordinator(DataUpdateCoordinator[None]):
         # Helper clients from the aionanoleaf fork (share the same transport).
         self.layout = LayoutClient(nanoleaf)
         self.rhythm_client = RhythmClient(nanoleaf)
+        self.effects = EffectsClient(nanoleaf)
         # Optional state populated best-effort by _async_update_data.
         self.global_orientation: int | None = None
         self.rhythm: dict[str, Any] = {}
+        # Sound-reactive effect names; None until loaded once (heavy call).
+        self.rhythm_effects: list[str] | None = None
 
     async def _async_update_data(self) -> None:
         try:
@@ -72,6 +76,18 @@ class NanoleafCoordinator(DataUpdateCoordinator[None]):
             self.rhythm = await self.rhythm_client.get_info()
         except _OPTIONAL_ERRORS as err:
             _LOGGER.debug("Nanoleaf rhythm info unavailable: %s", err)
+        # Discover sound-reactive effects once, only on devices with a mic.
+        # ``get_rhythm_effects`` needs aionanoleaf >= 0.5.0; degrade gracefully
+        # if an older library happens to be installed.
+        if self.has_rhythm and self.rhythm_effects is None:
+            if not hasattr(self.effects, "get_rhythm_effects"):
+                self.rhythm_effects = []
+                return
+            try:
+                self.rhythm_effects = await self.effects.get_rhythm_effects()
+            except _OPTIONAL_ERRORS as err:
+                _LOGGER.debug("Nanoleaf rhythm effects unavailable: %s", err)
+                self.rhythm_effects = []
 
     @property
     def has_panels(self) -> bool:
@@ -80,10 +96,15 @@ class NanoleafCoordinator(DataUpdateCoordinator[None]):
 
     @property
     def has_rhythm(self) -> bool:
-        """Return whether the device exposes a rhythm/audio module."""
+        """Return whether the device exposes a rhythm/audio (mic) module."""
         if not self.rhythm:
             return False
         connected = self.rhythm.get("rhythmConnected")
         if connected is not None:
             return bool(connected)
         return "rhythmMode" in self.rhythm or "rhythmActive" in self.rhythm
+
+    @property
+    def aux_available(self) -> bool:
+        """Return whether the rhythm module exposes a 3.5mm aux input."""
+        return bool(self.rhythm.get("auxAvailable"))

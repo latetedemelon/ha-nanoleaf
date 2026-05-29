@@ -77,3 +77,41 @@ Home Assistant cannot be imported on the container's default Python 3.11
   `/panelLayout/globalOrientation` and `/rhythm` respond as expected on each
   model. A full HA runtime test would use
   `pytest-homeassistant-custom-component`.
+
+## Follow-up: hardware breadth & music sync (1.2.0)
+
+Implements the two follow-up requests ("support all hardware versions" and "wire
+up music sync"). Requires aionanoleaf >= 0.5.0.
+
+- **Hardware breadth.** `TOUCH_MODELS` broadened to Canvas + all Shapes +
+  Elements (`NL29/42/47/48/52`; previously only 29/42/52). `manifest.json`
+  HomeKit discovery now includes the original Light Panels/Aurora (`NL22`). The
+  integration already works with any OpenAPI device added by IP; the library
+  `get_info()` was also made tolerant of devices that omit a panel layout.
+- **Music sync.** Research (Nanoleaf OpenAPI + openHAB + rowak) confirmed the
+  reliable surface: rhythm `connected`/`active`/`mode` (0=mic, 1=aux), and that
+  sound-reactive effects are identified by `pluginType == "rhythm"` via the
+  `requestAll` command. Added:
+  - A **Music sync effect** `select` listing the discovered sound-reactive
+    effects; choosing one sets the mic source and selects the effect. Created
+    only when such effects are discovered (best-effort; absent if the device
+    reports nothing).
+  - Rhythm source `select` now offers *Aux* only when `auxAvailable`.
+  - Capability detection answers "does this device have a mic?" — the rhythm
+    entities only appear when `rhythmConnected`, and diagnostics now include the
+    raw rhythm/orientation/panel data.
+- **Why no "music sync" switch:** there is no global music-sync on/off in the
+  API — reactivity is a property of the *selected effect*. A select of
+  sound-reactive effects models this honestly; a switch would have ambiguous
+  on/off state.
+- **Version-skew safety:** the coordinator guards `get_rhythm_effects` with
+  `hasattr`, so the integration still loads if an older aionanoleaf is present.
+
+### Verified (real HA 2025.10.1 + aionanoleaf 0.5.0, Python 3.13 venv)
+All 13 modules import; rhythm-source aux-gating, music-effect select
+options/current-option, capability detection, and the service schemas all pass
+the logic checks. aionanoleaf side: 17 unit tests, flake8, mypy, pylint 10/10.
+
+### Still needs real hardware
+Whether `requestAll`/`pluginType` is reported as expected per firmware, and that
+selecting a rhythm effect + mic actually drives music sync on the device.

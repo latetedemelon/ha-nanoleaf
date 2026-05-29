@@ -23,6 +23,9 @@
     "select": {
       "rhythm_mode": {
         "default": "mdi:microphone"
+      },
+      "music_effect": {
+        "default": "mdi:music-circle"
       }
     }
   },

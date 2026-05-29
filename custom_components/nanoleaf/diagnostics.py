@@ -16,7 +16,8 @@ async def async_get_config_entry_diagnostics(
     config_entry: NanoleafConfigEntry,
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    device = config_entry.runtime_data.nanoleaf
+    coordinator = config_entry.runtime_data
+    device = coordinator.nanoleaf
 
     return {
         "info": async_redact_data(config_entry.as_dict(), (CONF_TOKEN, "title")),
@@ -31,6 +32,8 @@ async def async_get_config_entry_diagnostics(
             "effect": device.effect,
             "effects_list": device.effects_list,
             "firmware_version": device.firmware_version,
+            "hardware_version": device.hardware_version,
+            "model": device.model,
             "hue_max": device.hue_max,
             "hue_min": device.hue_min,
             "hue": device.hue,
@@ -41,5 +44,14 @@ async def async_get_config_entry_diagnostics(
             "saturation_min": device.saturation_min,
             "saturation": device.saturation,
             "serial_no": device.serial_no,
+        },
+        "capabilities": {
+            "has_panels": coordinator.has_panels,
+            "panel_count": len(getattr(device, "panels", []) or []),
+            "global_orientation": coordinator.global_orientation,
+            "has_rhythm": coordinator.has_rhythm,
+            "aux_available": coordinator.aux_available,
+            "rhythm": coordinator.rhythm,
+            "rhythm_effects": coordinator.rhythm_effects,
         },
     }
