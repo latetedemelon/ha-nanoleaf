@@ -38,6 +38,9 @@
     },
     "blink_panels": {
       "service": "mdi:lightbulb-on"
+    },
+    "sync_album_art": {
+      "service": "mdi:album"
     }
   }
 }

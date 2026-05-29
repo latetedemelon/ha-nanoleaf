@@ -1,0 +1,81 @@
+blueprint:
+  name: Nanoleaf album-art music sync
+  description: >-
+    Paint a Nanoleaf panel device with the colours of whatever a media player is
+    currently playing. When the player starts a track (or changes track) the
+    panels are recoloured from the album art; when playback stops you can
+    optionally turn the panels off.
+
+    Requires the latetedemelon/ha-nanoleaf integration (provides the
+    `nanoleaf.sync_album_art` action).
+  domain: automation
+  author: latetedemelon/ha-nanoleaf
+  input:
+    media_player:
+      name: Media player
+      description: The player to follow (Spotify, Sonos, Music Assistant, ...).
+      selector:
+        entity:
+          domain: media_player
+    nanoleaf_light:
+      name: Nanoleaf light
+      description: The Nanoleaf panel light to recolour.
+      selector:
+        entity:
+          integration: nanoleaf
+          domain: light
+    when_stopped:
+      name: When playback stops
+      description: What to do when the media player is paused, idle or off.
+      default: nothing
+      selector:
+        select:
+          options:
+            - label: Do nothing (leave the last scene)
+              value: nothing
+            - label: Turn the panels off
+              value: turn_off
+
+variables:
+  stop_action: !input when_stopped
+
+triggers:
+  - trigger: state
+    entity_id: !input media_player
+    to: playing
+  - trigger: state
+    entity_id: !input media_player
+    attribute: entity_picture
+  - trigger: state
+    entity_id: !input media_player
+    to:
+      - paused
+      - idle
+      - "off"
+      - standby
+
+conditions: []
+
+actions:
+  - choose:
+      # Playing (or track/art changed while playing) -> recolour from album art.
+      - conditions:
+          - condition: state
+            entity_id: !input media_player
+            state: playing
+        sequence:
+          - action: nanoleaf.sync_album_art
+            target:
+              entity_id: !input nanoleaf_light
+            data:
+              media_player: !input media_player
+      # Stopped/paused -> optionally turn the panels off.
+      - conditions:
+          - "{{ stop_action == 'turn_off' }}"
+        sequence:
+          - action: light.turn_off
+            target:
+              entity_id: !input nanoleaf_light
+
+mode: single
+max_exceeded: silent

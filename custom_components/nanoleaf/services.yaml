@@ -99,3 +99,33 @@ blink_panels:
           min: 0
           max: 100
           unit_of_measurement: "%"
+
+sync_album_art:
+  name: Sync album art
+  description: >-
+    Paint the panels with the dominant colours of a media player's current
+    album art (Spotify, Sonos, Music Assistant, etc.). Call it again on track
+    change to follow the music.
+  target:
+    entity:
+      integration: nanoleaf
+      domain: light
+  fields:
+    media_player:
+      name: Media player
+      description: The media player whose now-playing album art should be used.
+      required: true
+      example: media_player.spotify
+      selector:
+        entity:
+          domain: media_player
+    brightness:
+      name: Brightness
+      description: Optional brightness overlay applied to the colours (0-100%).
+      required: false
+      example: 80
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"

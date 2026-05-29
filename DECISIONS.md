@@ -115,3 +115,41 @@ the logic checks. aionanoleaf side: 17 unit tests, flake8, mypy, pylint 10/10.
 ### Still needs real hardware
 Whether `requestAll`/`pluginType` is reported as expected per firmware, and that
 selecting a rhythm effect + mic actually drives music sync on the device.
+
+## Follow-up: link to Home Assistant media players (1.3.0)
+
+Requested: "doesn't HA have a music central area — can we link to it?" HA's music
+hub is the `media_player` domain (Spotify, Sonos, Music Assistant, …). The
+mic-based music sync reacts to room sound and knows nothing about HA playback, so
+this bridges the now-playing data to the panels. Chosen scope: **both**
+album-art colouring and playback triggering.
+
+- **`nanoleaf.sync_album_art` service** (entity service on the light) reads the
+  target `media_player`'s artwork via the **public** `MediaPlayerEntity.
+  async_get_media_image()` (works across Spotify/Sonos/etc. without per-platform
+  code), extracts up to 6 dominant colours with Pillow (run in an executor —
+  Pillow is blocking), and spreads them round-robin across the panels via the
+  Digital Twin. Clear `ServiceValidationError`s for "not a media player" / "no
+  album art".
+- **Playback triggering via a blueprint**, not a custom state listener / options
+  flow. Rationale: a blueprint is the idiomatic, reviewable HA way to wire
+  "on play / on track change / on stop" to the service, and avoids shipping
+  untested lifecycle code (live listeners, unload handling). The blueprint
+  recolours on `entity_picture`/`to: playing` changes and optionally turns the
+  panels off on stop.
+- **`pillow`** added to `manifest.json` requirements. It already ships with Home
+  Assistant, so this is satisfied without a heavy reinstall; declared loosely
+  (`>=10.0.0`).
+
+### Verified (real HA 2025.10.1, Python 3.13 venv)
+`MediaPlayerEntity.async_get_media_image` and `EntityComponent.get_entity` exist
+and are used; `_extract_palette` returns the right colours from a generated
+image; album-art colours map round-robin onto panels (checked through the real
+`Nanoleaf`/Digital Twin transport); the blueprint loads with HA's YAML loader
+(`!input` handled), its selectors validate, and its triggers pass
+`cv.TRIGGER_SCHEMA`; all JSON/YAML valid and service/translation/icon keys
+consistent.
+
+### Still needs real hardware / runtime
+End-to-end with a real media player + device (artwork fetch latency, how often
+`entity_picture` changes per integration, and the on-device look of the palette).
