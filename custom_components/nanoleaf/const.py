@@ -16,12 +16,10 @@ TOUCH_GESTURE_TRIGGER_MAP = {
     5: "swipe_right",
 }
 
-# Rhythm / audio-module modes (aionanoleaf RhythmClient).
+# Audio source names. The library owns the mapping to the API's numbers and
+# reports the sources a given module actually has, so only the fallback name
+# is needed here.
 RHYTHM_MODE_MICROPHONE = "microphone"
-RHYTHM_MODE_AUX = "aux"
-RHYTHM_MODES = [RHYTHM_MODE_MICROPHONE, RHYTHM_MODE_AUX]
-RHYTHM_MODE_TO_INT = {RHYTHM_MODE_MICROPHONE: 0, RHYTHM_MODE_AUX: 1}
-RHYTHM_INT_TO_MODE = {0: RHYTHM_MODE_MICROPHONE, 1: RHYTHM_MODE_AUX}
 
 # Per-panel "Digital Twin" services (registered on the light entity).
 SERVICE_SET_ALL_PANELS = "set_all_panels"

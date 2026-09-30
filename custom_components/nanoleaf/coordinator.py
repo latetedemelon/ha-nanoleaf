@@ -4,17 +4,8 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
-from typing import Any
 
-from aionanoleaf import (
-    EffectsClient,
-    InvalidToken,
-    LayoutClient,
-    Nanoleaf,
-    NanoleafException,
-    RhythmClient,
-    Unavailable,
-)
+from aionanoleaf2 import InvalidToken, Nanoleaf, NanoleafException, Unavailable
 from aiohttp import ClientError
 
 from homeassistant.config_entries import ConfigEntry
@@ -47,13 +38,6 @@ class NanoleafCoordinator(DataUpdateCoordinator[None]):
             update_interval=timedelta(minutes=1),
         )
         self.nanoleaf = nanoleaf
-        # Helper clients from the aionanoleaf fork (share the same transport).
-        self.layout = LayoutClient(nanoleaf)
-        self.rhythm_client = RhythmClient(nanoleaf)
-        self.effects = EffectsClient(nanoleaf)
-        # Optional state populated best-effort by _async_update_data.
-        self.global_orientation: int | None = None
-        self.rhythm: dict[str, Any] = {}
         # Sound-reactive effect names; None until loaded once (heavy call).
         self.rhythm_effects: list[str] | None = None
 
@@ -67,44 +51,54 @@ class NanoleafCoordinator(DataUpdateCoordinator[None]):
         await self._async_update_optional()
 
     async def _async_update_optional(self) -> None:
-        """Read layout/rhythm extras, tolerating devices that lack them."""
+        """Read layout/rhythm extras, tolerating devices that lack them.
+
+        The library reports an absent resource rather than raising, so these
+        only fail on a genuine transport problem, which must not abort the
+        whole refresh.
+        """
+        if not self.supports_extras:
+            return
         try:
-            self.global_orientation = await self.layout.get_global_orientation()
+            await self.nanoleaf.get_global_orientation()
         except _OPTIONAL_ERRORS as err:
             _LOGGER.debug("Nanoleaf global orientation unavailable: %s", err)
         try:
-            self.rhythm = await self.rhythm_client.get_info()
+            await self.nanoleaf.get_rhythm()
         except _OPTIONAL_ERRORS as err:
             _LOGGER.debug("Nanoleaf rhythm info unavailable: %s", err)
-        # Discover sound-reactive effects once, only on devices with a mic.
-        # ``get_rhythm_effects`` needs aionanoleaf >= 0.5.0; degrade gracefully
-        # if an older library happens to be installed.
+        # Discover sound-reactive effects once, only on devices with a mic:
+        # it is a full effect-metadata download.
         if self.has_rhythm and self.rhythm_effects is None:
-            if not hasattr(self.effects, "get_rhythm_effects"):
-                self.rhythm_effects = []
-                return
             try:
-                self.rhythm_effects = await self.effects.get_rhythm_effects()
+                self.rhythm_effects = await self.nanoleaf.get_rhythm_effects()
             except _OPTIONAL_ERRORS as err:
                 _LOGGER.debug("Nanoleaf rhythm effects unavailable: %s", err)
                 self.rhythm_effects = []
 
     @property
+    def supports_extras(self) -> bool:
+        """Return whether the installed library exposes the rhythm/layout API.
+
+        These arrived in aionanoleaf2 1.2.0. The requirement is a URL, so pip
+        cannot enforce a floor; checking here means an older library degrades
+        to the plain light instead of breaking the whole integration.
+        """
+        return hasattr(self.nanoleaf, "get_rhythm")
+
+    @property
     def has_panels(self) -> bool:
         """Return whether the device exposes individually addressable panels."""
-        return bool(getattr(self.nanoleaf, "panels", None))
+        return bool(self.nanoleaf.panels)
 
     @property
     def has_rhythm(self) -> bool:
         """Return whether the device exposes a rhythm/audio (mic) module."""
-        if not self.rhythm:
-            return False
-        connected = self.rhythm.get("rhythmConnected")
-        if connected is not None:
-            return bool(connected)
-        return "rhythmMode" in self.rhythm or "rhythmActive" in self.rhythm
+        return self.supports_extras and self.nanoleaf.has_rhythm
 
     @property
-    def aux_available(self) -> bool:
-        """Return whether the rhythm module exposes a 3.5mm aux input."""
-        return bool(self.rhythm.get("auxAvailable"))
+    def global_orientation(self) -> int | None:
+        """Return the panel layout rotation in degrees, if known."""
+        if not self.supports_extras:
+            return None
+        return self.nanoleaf.global_orientation

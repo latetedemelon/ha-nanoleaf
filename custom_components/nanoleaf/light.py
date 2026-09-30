@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aionanoleaf import DigitalTwin, NanoleafException
+from aionanoleaf2 import DigitalTwin, NanoleafException, UnknownPanel
 import voluptuous as vol
 
 from homeassistant.components.light import (
@@ -88,7 +88,7 @@ async def async_setup_entry(
     """Set up the Nanoleaf light and its per-panel services."""
     async_add_entities([NanoleafLight(entry.runtime_data)])
 
-    # Per-panel "Digital Twin" services from the aionanoleaf fork. They are
+    # Per-panel "Digital Twin" services. They are
     # registered on the light entity so they can be targeted by entity_id,
     # device_id or area_id like any other entity service.
     platform = entity_platform.async_get_current_platform()
@@ -206,18 +206,19 @@ class NanoleafLight(NanoleafEntity, LightEntity):
         await self._nanoleaf.turn_off(None if transition is None else int(transition))
         await self.coordinator.async_refresh()
 
-    # --- Per-panel "Digital Twin" services (aionanoleaf fork) ------------- #
+    # --- Per-panel "Digital Twin" services -------------------------------- #
 
     async def _async_twin(self) -> DigitalTwin:
-        """Build a Digital Twin, mapping fork errors to HA errors."""
-        try:
-            return await DigitalTwin.create(self._nanoleaf)
-        except RuntimeError as err:
-            # Raised by aionanoleaf when the device has no addressable panels.
+        """Build a Digital Twin, mapping library errors to HA errors."""
+        # Checked up front so that a device without addressable panels gets the
+        # specific message rather than a generic library failure.
+        if not self.coordinator.has_panels:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="no_panels",
-            ) from err
+            )
+        try:
+            return await self._nanoleaf.digital_twin()
         except NanoleafException as err:
             raise HomeAssistantError(str(err)) from err
 
@@ -228,7 +229,7 @@ class NanoleafLight(NanoleafEntity, LightEntity):
     ) -> None:
         """Set every panel to a single colour."""
         twin = await self._async_twin()
-        await twin.set_all_colors(rgb_color)
+        twin.set_all(rgb_color)
         await self._async_sync(twin, brightness)
 
     async def async_set_panel_colors(
@@ -238,22 +239,20 @@ class NanoleafLight(NanoleafEntity, LightEntity):
     ) -> None:
         """Set individual panel colours. Unlisted panels are turned off."""
         twin = await self._async_twin()
-        unknown: list[int] = []
-        for panel in panels:
-            panel_id = panel[ATTR_PANEL_ID]
-            try:
-                await twin.set_color(panel_id, panel[ATTR_RGB_COLOR])
-            except ValueError:
-                unknown.append(panel_id)
+        colors = {panel[ATTR_PANEL_ID]: panel[ATTR_RGB_COLOR] for panel in panels}
+        # Validated here rather than relying on the library's message, so the
+        # user gets the translated error listing which IDs their device has.
+        unknown = sorted(set(colors) - set(twin.panel_ids))
         if unknown:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="unknown_panels",
                 translation_placeholders={
-                    "panels": ", ".join(str(p) for p in sorted(unknown)),
-                    "valid": ", ".join(str(p) for p in twin.ids),
+                    "panels": ", ".join(str(p) for p in unknown),
+                    "valid": ", ".join(str(p) for p in twin.panel_ids),
                 },
             )
+        twin.set_colors(colors)
         await self._async_sync(twin, brightness)
 
     async def async_blink_panels(
@@ -264,15 +263,11 @@ class NanoleafLight(NanoleafEntity, LightEntity):
     ) -> None:
         """Briefly show a colour on all panels, then restore the prior effect."""
         twin = await self._async_twin()
-        await twin.set_all_colors(rgb_color)
+        twin.set_all(rgb_color)
         try:
-            # duration_ms is a real millisecond sleep in aionanoleaf; the
-            # restore transition uses the library default to avoid the
-            # ambiguous animation-time unit.
-            await twin.apply_temp(
-                duration_ms=int(duration * 1000),
-                brightness=brightness,
-            )
+            # Uses the device's temporary-display command, so the selected
+            # effect is never replaced and restoring it is just a re-select.
+            await twin.show_temporarily(duration, brightness=brightness)
         except NanoleafException as err:
             raise HomeAssistantError(str(err)) from err
         await self.coordinator.async_request_refresh()
@@ -298,14 +293,20 @@ class NanoleafLight(NanoleafEntity, LightEntity):
                 translation_placeholders={"entity_id": media_player},
             )
         twin = await self._async_twin()
-        for index, panel_id in enumerate(twin.ids):
-            await twin.set_color(panel_id, palette[index % len(palette)])
+        twin.set_colors(
+            {
+                panel_id: palette[index % len(palette)]
+                for index, panel_id in enumerate(twin.panel_ids)
+            }
+        )
         await self._async_sync(twin, brightness)
 
     async def _async_sync(self, twin: DigitalTwin, brightness: int | None) -> None:
         """Write the twin's colours to the device and refresh state."""
         try:
             await twin.sync(brightness=brightness)
+        except UnknownPanel as err:
+            raise ServiceValidationError(str(err)) from err
         except NanoleafException as err:
             raise HomeAssistantError(str(err)) from err
         await self.coordinator.async_request_refresh()

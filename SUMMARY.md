@@ -61,7 +61,7 @@ The component uses a custom fork of aionanoleaf:
 
 The manifest.json correctly specifies:
 ```json
-"requirements": ["aionanoleaf @ git+https://github.com/latetedemelon/aionanoleaf.git@main"]
+"requirements": ["aionanoleaf2 @ https://github.com/latetedemelon/aionanoleaf2/archive/refs/heads/master.tar.gz"]
 ```
 
 ### 4. HACS Compatibility

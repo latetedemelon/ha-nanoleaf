@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0]
+
+Migrated to the `aionanoleaf2` library.
+
+### Changed
+
+- **Breaking:** the dependency is now
+  `aionanoleaf2 @ https://github.com/latetedemelon/aionanoleaf2/archive/refs/heads/master.tar.gz`,
+  replacing `aionanoleaf @ git+…/aionanoleaf.git@master`. `aionanoleaf2` is the
+  lineage Home Assistant itself has shipped since 2026.3; the older
+  `aionanoleaf` was dropped upstream and its last release was in 2022. Requires
+  aionanoleaf2 >= 1.2.0.
+- The requirement is a source archive rather than `git+https`, so installing it
+  no longer needs a `git` binary inside the Home Assistant container.
+- The `EffectsClient` / `LayoutClient` / `RhythmClient` wrappers are gone; the
+  same calls are now methods on `Nanoleaf`, so there is nothing optional left
+  to import. `hasattr` capability detection replaced the module-level imports
+  that used to make an older library break the whole integration.
+- `set_panel_colors` applies its colours atomically: an unknown panel ID now
+  leaves the buffer untouched instead of half-written.
+- `blink_panels` uses the device's temporary-display command, so the selected
+  effect is never replaced and restoring it is a re-select rather than a
+  best-effort guess.
+- `manifest.json` declares `integration_type: device`, matching Home
+  Assistant's own manifest; without it the UI presented the device as a hub.
+
+### Fixed
+
+- `hacs.json` declared a minimum of Home Assistant 2024.1.0, but the code uses
+  `AddConfigEntryEntitiesCallback`, which is only defined from 2025.3.0, and
+  PEP 695 `type` statements. HACS would happily install this where it could not
+  even be parsed. Corrected to 2025.3.0.
+- The orientation `number` entity is created when the device has panels rather
+  than when the first orientation read happens to succeed. A transient failure
+  during the first refresh used to hide the entity until the next reload.
+- Nanoleaf Essentials and Matter Wi-Fi devices no longer crash the config flow
+  with `KeyError: 'state'`, via the library fix.
+
 ## [1.3.0] - 2026-05-29
 
 Links the panels to Home Assistant's media players.

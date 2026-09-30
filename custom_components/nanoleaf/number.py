@@ -18,7 +18,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Nanoleaf orientation number for panel devices."""
     coordinator = entry.runtime_data
-    if coordinator.has_panels and coordinator.global_orientation is not None:
+    # Keyed off the device having panels rather than off a successful read: a
+    # transient failure during the first refresh must not hide the entity until
+    # the next reload. native_value already copes with an unknown value.
+    if coordinator.supports_extras and coordinator.has_panels:
         async_add_entities([NanoleafOrientationNumber(coordinator)])
 
 
@@ -47,5 +50,5 @@ class NanoleafOrientationNumber(NanoleafEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         """Set a new global orientation."""
-        await self.coordinator.layout.set_global_orientation(int(value))
+        await self.coordinator.nanoleaf.set_global_orientation(int(value))
         await self.coordinator.async_request_refresh()
