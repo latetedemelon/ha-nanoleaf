@@ -51,7 +51,8 @@ async def async_get_config_entry_diagnostics(
             "global_orientation": coordinator.global_orientation,
             "has_rhythm": coordinator.has_rhythm,
             "library_supports_extras": coordinator.supports_extras,
-            "aux_available": coordinator.supports_extras and device.rhythm_aux_available,
+            "aux_available": coordinator.supports_extras
+            and device.rhythm_aux_available,
             "rhythm": device.rhythm if coordinator.supports_extras else {},
             "rhythm_effects": coordinator.rhythm_effects,
         },
