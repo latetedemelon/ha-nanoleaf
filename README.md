@@ -143,19 +143,68 @@ automation:
 On panel devices (Shapes, Canvas, Elements, Lines) this integration exposes the
 fork's enhanced functionality.
 
-### There is one light entity, not one per panel
+### One entity per panel (optional)
 
-The device appears as a single `light` entity. Individual panels are addressed
-through **actions** (services) targeting that entity, not through separate
-entities.
+By default the device appears as a single `light` entity, and panels are
+addressed through the actions below. If you want to click individual panels in
+the dashboard, turn on per-panel entities:
 
-That is deliberate. Nanoleaf has no per-panel read-back — the device cannot tell
-you what colour a given panel is currently showing — and the API applies panel
-colours as one whole-scene write rather than panel by panel. Per-panel entities
-would therefore be write-only, with state that is a local guess rather than
-something read from the device, and a 30-panel wall would add 30 of them. The
-actions below write the whole layout in one call, which is what the hardware
-actually does.
+**Settings → Devices & services → Nanoleaf → Configure → Create an entity per
+panel**
+
+You get one `light` entity per addressable panel — `Panel 4231`, `Panel 12044`
+and so on — each with a colour wheel and a brightness slider, controllable from
+a dashboard or from a script:
+
+```yaml
+action: light.turn_on
+target:
+  entity_id: light.shapes_panel_4231
+data:
+  rgb_color: [255, 0, 0]
+  brightness: 200
+```
+
+```yaml
+# Several panels at once still works; each is an ordinary light entity
+action: light.turn_on
+target:
+  entity_id:
+    - light.shapes_panel_4231
+    - light.shapes_panel_12044
+data:
+  hs_color: [240, 100]
+```
+
+Each panel entity also carries its `panel_id`, `x`, `y` and `shape` as
+attributes, so a template can find panels by position.
+
+Controllers and connectors are skipped — `Shapes Controller`, `Controller Cap`,
+`Lines Connector`, `Power Connector`, and the Light Panels `Rhythm` module. They
+appear in the layout but have no LEDs. Every panel the device reports is still
+listed by `nanoleaf.get_panels`, so you can see what was left out.
+
+#### What to expect from per-panel entities
+
+These are worth understanding before relying on them, because the hardware
+constrains what is possible:
+
+- **Their state is what Home Assistant last wrote, not what the panel is
+  showing.** Nanoleaf has no per-panel read-back; the device cannot be asked
+  what colour a given panel is. State is restored across restarts for the same
+  reason.
+- **Changing one panel rewrites the whole scene,** because that is the only
+  write the API offers. Rapid changes are batched, so a script setting ten
+  panels produces one device write rather than ten.
+- **Selecting an effect makes them stale.** An effect takes over the panels, and
+  Home Assistant has no way to know what each one is showing. The next panel
+  change rewrites the scene and the entities become true again.
+- They are off by default because a 30-panel wall would otherwise add 30
+  entities for everyone, including people who only want the device light.
+
+The actions below need none of this and write the whole layout in one call,
+which is what the hardware actually does — so prefer them for automations that
+set many panels at once.
 
 ### Finding your panel IDs
 

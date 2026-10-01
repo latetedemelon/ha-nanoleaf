@@ -28,6 +28,9 @@ SERVICE_BLINK_PANELS = "blink_panels"
 SERVICE_SYNC_ALBUM_ART = "sync_album_art"
 SERVICE_GET_PANELS = "get_panels"
 
+# Config entry option: create one light entity per addressable panel.
+CONF_PANEL_ENTITIES = "panel_entities"
+
 # Service field names. ``brightness`` and ``transition`` reuse the light
 # platform's constants (same string keys) and are not redefined here.
 ATTR_RGB_COLOR = "rgb_color"
