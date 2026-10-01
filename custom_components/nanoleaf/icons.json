@@ -13,6 +13,12 @@
     "light": {
       "light": {
         "default": "mdi:triangle-outline"
+      },
+      "panel": {
+        "default": "mdi:hexagon-slice-6",
+        "state": {
+          "off": "mdi:hexagon-outline"
+        }
       }
     },
     "number": {
@@ -41,6 +47,9 @@
     },
     "sync_album_art": {
       "service": "mdi:album"
+    },
+    "get_panels": {
+      "service": "mdi:view-grid-outline"
     }
   }
 }

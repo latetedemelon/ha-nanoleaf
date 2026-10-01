@@ -143,15 +143,128 @@ automation:
 On panel devices (Shapes, Canvas, Elements, Lines) this integration exposes the
 fork's enhanced functionality.
 
-### Services
+### One entity per panel (optional)
 
-| Service | Description |
+By default the device appears as a single `light` entity, and panels are
+addressed through the actions below. If you want to click individual panels in
+the dashboard, turn on per-panel entities:
+
+**Settings → Devices & services → Nanoleaf → Configure → Create an entity per
+panel**
+
+You get one `light` entity per addressable panel — `Panel 4231`, `Panel 12044`
+and so on — each with a colour wheel and a brightness slider, controllable from
+a dashboard or from a script:
+
+```yaml
+action: light.turn_on
+target:
+  entity_id: light.shapes_panel_4231
+data:
+  rgb_color: [255, 0, 0]
+  brightness: 200
+```
+
+```yaml
+# Several panels at once still works; each is an ordinary light entity
+action: light.turn_on
+target:
+  entity_id:
+    - light.shapes_panel_4231
+    - light.shapes_panel_12044
+data:
+  hs_color: [240, 100]
+```
+
+Each panel entity also carries its `panel_id`, `x`, `y` and `shape` as
+attributes, so a template can find panels by position.
+
+Controllers and connectors are skipped — `Shapes Controller`, `Controller Cap`,
+`Lines Connector`, `Power Connector`, and the Light Panels `Rhythm` module. They
+appear in the layout but have no LEDs. Every panel the device reports is still
+listed by `nanoleaf.get_panels`, so you can see what was left out.
+
+#### What to expect from per-panel entities
+
+These are worth understanding before relying on them, because the hardware
+constrains what is possible:
+
+- **Their state is what Home Assistant last wrote, not what the panel is
+  showing.** Nanoleaf has no per-panel read-back; the device cannot be asked
+  what colour a given panel is. State is restored across restarts for the same
+  reason.
+- **Changing one panel rewrites the whole scene,** because that is the only
+  write the API offers. Rapid changes are batched, so a script setting ten
+  panels produces one device write rather than ten.
+- **Selecting an effect makes them stale.** An effect takes over the panels, and
+  Home Assistant has no way to know what each one is showing. The next panel
+  change rewrites the scene and the entities become true again.
+- They are off by default because a 30-panel wall would otherwise add 30
+  entities for everyone, including people who only want the device light.
+
+The actions below need none of this and write the whole layout in one call,
+which is what the hardware actually does — so prefer them for automations that
+set many panels at once.
+
+### Finding your panel IDs
+
+The per-panel actions need panel IDs, and they are assigned by the device rather
+than being 1, 2, 3. Call the **Get panels** action to list them — it returns its
+result instead of changing anything, so it is safe to run from
+**Developer Tools → Actions**:
+
+```yaml
+action: nanoleaf.get_panels
+target:
+  entity_id: light.shapes
+```
+
+```yaml
+count: 4
+panels:
+  - panel_id: 4231
+    x: 0
+    y: 0
+    orientation: 0
+    shape: Hexagon (Shapes)
+  - panel_id: 8190
+    x: 200
+    y: 0
+    orientation: 120
+    shape: Hexagon (Shapes)
+  - panel_id: 12044
+    x: 100
+    y: 58
+    orientation: 60
+    shape: Hexagon (Shapes)
+  - panel_id: 65533
+    x: 300
+    y: 58
+    orientation: 0
+    shape: Shapes Controller
+```
+
+`x` and `y` are the device's own layout coordinates, so you can work out which
+physical panel is which rather than guessing. Watch for entries whose `shape` is
+a controller or connector — `Shapes Controller`, `Controller Cap`,
+`Lines Connector`, `Power Connector`. Those appear in the layout but have no
+LEDs, so colours written to them do nothing.
+
+The same list is in the integration's diagnostics download if you prefer a file.
+
+### Actions
+
+| Action | Description |
 | --- | --- |
+| `nanoleaf.get_panels` | List panel IDs and positions. Returns a result; changes nothing. |
 | `nanoleaf.set_all_panels` | Set every panel to one RGB color (static scene). |
 | `nanoleaf.set_panel_colors` | Set individual panels by `panel_id`. Unlisted panels are turned off. |
 | `nanoleaf.blink_panels` | Briefly flash a color on all panels, then restore the previous effect. |
+| `nanoleaf.sync_album_art` | Colour the panels from a media player's album art. |
 
-Panel IDs can be read from the integration's diagnostics download.
+Because a static scene describes the whole layout, `set_panel_colors` turns off
+any panel you do not list. To change some panels and leave the others as they
+are, include them all and repeat their current colours.
 
 ```yaml
 # Paint two panels and turn the rest off

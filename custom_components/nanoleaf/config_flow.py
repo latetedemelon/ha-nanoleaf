@@ -13,10 +13,13 @@ import voluptuous as vol
 from homeassistant.config_entries import (
     SOURCE_REAUTH,
     SOURCE_USER,
+    ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
+    OptionsFlowWithReload,
 )
 from homeassistant.const import CONF_HOST, CONF_TOKEN
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.json import save_json
 from homeassistant.helpers.service_info.ssdp import SsdpServiceInfo
@@ -26,7 +29,7 @@ from homeassistant.helpers.service_info.zeroconf import (
 )
 from homeassistant.util.json import JsonObjectType, JsonValueType, load_json_object
 
-from .const import DOMAIN
+from .const import CONF_PANEL_ENTITIES, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +43,31 @@ USER_SCHEMA: Final = vol.Schema(
 )
 
 
+class NanoleafOptionsFlow(OptionsFlowWithReload):
+    """Handle the Nanoleaf options."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Offer the options. Changing one reloads the entry."""
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_PANEL_ENTITIES,
+                        default=self.config_entry.options.get(
+                            CONF_PANEL_ENTITIES, False
+                        ),
+                    ): bool,
+                }
+            ),
+        )
+
+
 class NanoleafConfigFlow(ConfigFlow, domain=DOMAIN):
     """Nanoleaf config flow."""
 
@@ -50,6 +78,12 @@ class NanoleafConfigFlow(ConfigFlow, domain=DOMAIN):
     device_id: str
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> NanoleafOptionsFlow:
+        """Return the options flow."""
+        return NanoleafOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

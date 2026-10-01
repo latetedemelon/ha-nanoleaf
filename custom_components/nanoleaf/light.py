@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aionanoleaf2 import DigitalTwin, NanoleafException, UnknownPanel
+from aionanoleaf2 import DigitalTwin, NanoleafException, Panel, UnknownPanel
 import voluptuous as vol
 
 from homeassistant.components.light import (
@@ -18,11 +18,14 @@ from homeassistant.components.light import (
     LightEntityFeature,
 )
 from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER_DOMAIN
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.util.color import color_hs_to_RGB, color_RGB_to_hs
 
+from .canvas import BLACK, PanelCanvas
 from .const import (
     ALBUM_ART_COLORS,
     ATTR_DURATION,
@@ -30,8 +33,10 @@ from .const import (
     ATTR_PANEL_ID,
     ATTR_PANELS,
     ATTR_RGB_COLOR,
+    CONF_PANEL_ENTITIES,
     DOMAIN,
     SERVICE_BLINK_PANELS,
+    SERVICE_GET_PANELS,
     SERVICE_SET_ALL_PANELS,
     SERVICE_SET_PANEL_COLORS,
     SERVICE_SYNC_ALBUM_ART,
@@ -86,7 +91,21 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Nanoleaf light and its per-panel services."""
-    async_add_entities([NanoleafLight(entry.runtime_data)])
+    coordinator = entry.runtime_data
+    entities: list[LightEntity] = [NanoleafLight(coordinator)]
+
+    # One light per panel, off by default: a 30-panel wall would otherwise add
+    # 30 entities for everyone, including people who only want the whole-device
+    # light. Enable it under the integration's Configure option.
+    if entry.options.get(CONF_PANEL_ENTITIES) and coordinator.has_panels:
+        canvas = PanelCanvas(hass, coordinator)
+        entry.async_on_unload(canvas.async_shutdown)
+        entities += [
+            NanoleafPanelLight(coordinator, canvas, panel)
+            for panel in PanelCanvas.addressable_panels(coordinator)
+        ]
+
+    async_add_entities(entities)
 
     # Per-panel "Digital Twin" services. They are
     # registered on the light entity so they can be targeted by entity_id,
@@ -103,6 +122,14 @@ async def async_setup_entry(
     )
     platform.async_register_entity_service(
         SERVICE_SYNC_ALBUM_ART, SYNC_ALBUM_ART_SCHEMA, "async_sync_album_art"
+    )
+    # Returns its result instead of changing anything: the per-panel services
+    # need panel IDs, and this is how you find out what yours are.
+    platform.async_register_entity_service(
+        SERVICE_GET_PANELS,
+        None,
+        "async_get_panels",
+        supports_response=SupportsResponse.ONLY,
     )
 
 
@@ -301,6 +328,28 @@ class NanoleafLight(NanoleafEntity, LightEntity):
         )
         await self._async_sync(twin, brightness)
 
+    async def async_get_panels(self) -> dict[str, Any]:
+        """Return this device's panels, so their IDs can be used elsewhere.
+
+        Sorted by ID, which is the order the per-panel services address them
+        in, and includes each panel's position so a layout can be worked out
+        without guessing.
+        """
+        panels = sorted(self._nanoleaf.panels, key=lambda panel: panel.id)
+        return {
+            "count": len(panels),
+            "panels": [
+                {
+                    "panel_id": panel.id,
+                    "x": panel.x_coordinate,
+                    "y": panel.y_coordinate,
+                    "orientation": panel.orientation,
+                    "shape": panel.shape.name,
+                }
+                for panel in panels
+            ],
+        }
+
     async def _async_sync(self, twin: DigitalTwin, brightness: int | None) -> None:
         """Write the twin's colours to the device and refresh state."""
         try:
@@ -310,3 +359,111 @@ class NanoleafLight(NanoleafEntity, LightEntity):
         except NanoleafException as err:
             raise HomeAssistantError(str(err)) from err
         await self.coordinator.async_request_refresh()
+
+
+class NanoleafPanelLight(NanoleafEntity, LightEntity, RestoreEntity):
+    """One addressable panel of a Nanoleaf device.
+
+    The device cannot report a single panel's colour, so this entity's state is
+    what Home Assistant last wrote rather than something read back. It is
+    restored across restarts for the same reason, and goes stale if the scene is
+    changed by something else -- selecting an effect on the device light, for
+    instance. The next panel change rewrites the whole scene and makes it true
+    again.
+    """
+
+    _attr_supported_color_modes = {ColorMode.HS}
+    _attr_color_mode = ColorMode.HS
+    _attr_translation_key = "panel"
+
+    def __init__(
+        self,
+        coordinator: NanoleafCoordinator,
+        canvas: PanelCanvas,
+        panel: Panel,
+    ) -> None:
+        """Initialize a panel light."""
+        super().__init__(coordinator)
+        self._canvas = canvas
+        self._panel_id = panel.id
+        self._attr_unique_id = f"{self._nanoleaf.serial_no}_panel_{panel.id}"
+        self._attr_translation_placeholders = {"panel_id": str(panel.id)}
+        self._attr_extra_state_attributes = {
+            "panel_id": panel.id,
+            "x": panel.x_coordinate,
+            "y": panel.y_coordinate,
+            "shape": panel.shape.name,
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Seed the canvas from the state this entity had before a restart."""
+        await super().async_added_to_hass()
+        if (last := await self.async_get_last_state()) is None:
+            return
+        hs_color = last.attributes.get(ATTR_HS_COLOR)
+        brightness = last.attributes.get(ATTR_BRIGHTNESS)
+        if last.state != "on" or hs_color is None:
+            return
+        self._canvas.set(self._panel_id, self._to_rgb(tuple(hs_color), brightness))
+
+    @property
+    def _rgb(self) -> tuple[int, int, int]:
+        """Return the colour this panel is believed to be showing."""
+        return self._canvas.get(self._panel_id)
+
+    @property
+    def is_on(self) -> bool:
+        """Return True while the panel is showing any colour at all."""
+        return self._rgb != BLACK
+
+    @property
+    def brightness(self) -> int:
+        """Return brightness as the largest colour channel.
+
+        A panel has no brightness of its own: the colour written to it carries
+        both hue and level, so the two are separated here and recombined on the
+        way out.
+        """
+        return max(self._rgb)
+
+    @property
+    def hs_color(self) -> tuple[float, float]:
+        """Return the hue and saturation of the panel's colour."""
+        return color_RGB_to_hs(*self._rgb)
+
+    @staticmethod
+    def _to_rgb(
+        hs_color: tuple[float, float] | None, brightness: int | None
+    ) -> tuple[int, int, int]:
+        """Combine a hue/saturation pair and a brightness into one RGB value."""
+        red, green, blue = color_hs_to_RGB(*(hs_color or (0.0, 0.0)))
+        level = 255 if brightness is None else brightness
+        return (
+            round(red * level / 255),
+            round(green * level / 255),
+            round(blue * level / 255),
+        )
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Set this panel's colour, keeping whatever is not specified."""
+        hs_color = kwargs.get(ATTR_HS_COLOR)
+        brightness = kwargs.get(ATTR_BRIGHTNESS)
+
+        if hs_color is None and brightness is None and self.is_on:
+            return  # already on and nothing to change
+        if hs_color is None:
+            # Turning on without a colour: keep the last one, or go to white
+            # rather than staying invisibly black.
+            hs_color = self.hs_color if self.is_on else (0.0, 0.0)
+        if brightness is None:
+            brightness = self.brightness if self.is_on else 255
+
+        self._canvas.set(self._panel_id, self._to_rgb(hs_color, brightness))
+        self.async_write_ha_state()
+        await self._canvas.async_request_write()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Blank this panel, leaving the others as they are."""
+        self._canvas.set(self._panel_id, BLACK)
+        self.async_write_ha_state()
+        await self._canvas.async_request_write()

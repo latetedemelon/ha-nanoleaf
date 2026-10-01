@@ -73,6 +73,11 @@
       "music_effect": {
         "name": "Music sync effect"
       }
+    },
+    "light": {
+      "panel": {
+        "name": "Panel {panel_id}"
+      }
     }
   },
   "exceptions": {
@@ -149,12 +154,29 @@
           "description": "Optional brightness overlay applied to the colors (0-100%)."
         }
       }
+    },
+    "get_panels": {
+      "name": "Get panels",
+      "description": "List this device's panels with their IDs and positions."
     }
   },
   "issues": {
     "deprecated_device_trigger": {
       "title": "Nanoleaf device trigger is deprecated",
       "description": "The Nanoleaf device trigger is deprecated and will be removed in a future release. You can now use the gesture event entity to build automations."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Nanoleaf options",
+        "data": {
+          "panel_entities": "Create an entity per panel"
+        },
+        "data_description": {
+          "panel_entities": "Adds one light entity for every addressable panel, so panels can be controlled from the dashboard. The device cannot report a single panel's colour, so these entities show what Home Assistant last wrote rather than what the panel is showing."
+        }
+      }
     }
   }
 }
