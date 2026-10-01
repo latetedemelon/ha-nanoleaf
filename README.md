@@ -301,6 +301,51 @@ data:
   rhythm module is currently active.
 - **Music sync effect** (`select.<device>_music_sync_effect`) — see below.
 
+## Troubleshooting
+
+### I only see one light, not one per panel
+
+Per-panel entities are off by default. Turn them on under
+**Settings → Devices & services → Nanoleaf → Configure → Create an entity per
+panel**.
+
+If there is no **Configure** button on the integration, the installed version
+predates the option — update the integration in HACS and restart Home Assistant.
+The presence of that button is the quickest way to tell which version is
+actually running.
+
+Note that the device page's *Controls* card shows a light as a plain toggle.
+That is the whole-device light; its colour wheel and brightness slider are in the
+more-info dialog, reached by clicking the entity name rather than the toggle.
+
+### There is no orientation or music-sync entity
+
+Those need `aionanoleaf2` 1.2.0 or newer. On an older library the integration
+deliberately degrades to the light and its panel actions instead of failing to
+load, so their absence means the library did not update.
+
+Check what is installed:
+
+```bash
+# in the Home Assistant container
+python -c "import aionanoleaf2, aionanoleaf2.nanoleaf as n; \
+           print(hasattr(n.Nanoleaf, 'get_rhythm'))"
+```
+
+`False` means the library is too old. Home Assistant installs it from the URL in
+`manifest.json` on every start, so a restart picks up a newer one once it is
+available.
+
+### A panel entity does nothing
+
+Some pieces in a layout have no LEDs — controllers, connectors, caps and the
+Light Panels rhythm module — and are excluded. A few shapes are included because
+their LED status is unclear: Elements corner pieces and Canvas passive squares.
+If one of those is yours and it ignores you, that is why.
+
+Run the **Get panels** action to see every panel the device reports, with its
+shape.
+
 ## Music sync
 
 Nanoleaf panels react to music using the device **microphone** (built-in on
