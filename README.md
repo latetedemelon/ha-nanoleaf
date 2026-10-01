@@ -1,10 +1,20 @@
 # ha-nanoleaf
 
-Custom Home Assistant component for Nanoleaf that uses an enhanced fork of aionanoleaf with additional functionality.
+Custom Home Assistant component for Nanoleaf that uses an enhanced fork of aionanoleaf2 with additional functionality.
 
 ## Description
 
-This is a custom component for Home Assistant that provides Nanoleaf smart lighting integration. It uses a fork of the `aionanoleaf` library located at [github.com/latetedemelon/aionanoleaf](https://github.com/latetedemelon/aionanoleaf) which includes additional features and improvements.
+This is a custom component for Home Assistant that provides Nanoleaf smart
+lighting integration. It uses a fork of the `aionanoleaf2` library at
+[github.com/latetedemelon/aionanoleaf2](https://github.com/latetedemelon/aionanoleaf2),
+which adds per-panel control, audio-module support and layout rotation on top of
+fixes for Nanoleaf Essentials and Matter Wi-Fi devices, link-local IPv6 and
+touch streaming.
+
+Home Assistant's own Nanoleaf integration has required `aionanoleaf2` since
+2026.3, and currently pins `1.0.2` — the release with the `KeyError: 'state'`
+crash on Essentials and Matter Wi-Fi devices. This component points at the fork
+instead, so that crash is fixed along with everything else.
 
 ## Features
 
@@ -27,13 +37,16 @@ This is a custom component for Home Assistant that provides Nanoleaf smart light
 - Configuration flow for easy setup
 - Diagnostics support (includes mic/rhythm + panel capabilities)
 
-> **Dependency note:** the per-panel / orientation / rhythm / music-sync
-> features require the wired aionanoleaf fork (>= 0.5.0), which is on `master`.
-> The
-> `manifest.json` pins the dependency to
-> `aionanoleaf.git@master`; Home Assistant installs it directly from GitHub on
-> setup. (Pin to a tagged release once one is published for reproducible
-> installs.)
+> **Dependency note:** the per-panel, orientation, rhythm and music-sync
+> features need `aionanoleaf2` >= 1.2.0. `manifest.json` points at the fork's
+> `master` as a source archive, which Home Assistant installs from GitHub on
+> setup — an archive URL rather than `git+https`, so no `git` binary is needed
+> inside the container. Pin to a tagged release once one is published if you
+> want reproducible installs.
+>
+> If an older `aionanoleaf2` is somehow installed, the integration degrades to
+> the plain light rather than failing to load: the rhythm and orientation
+> entities are simply not created.
 
 ## Installation
 

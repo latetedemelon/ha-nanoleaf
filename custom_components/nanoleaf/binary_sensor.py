@@ -38,9 +38,6 @@ class NanoleafRhythmActiveBinarySensor(NanoleafEntity, BinarySensorEntity):
         self._attr_unique_id = f"{self._nanoleaf.serial_no}_rhythm_active"
 
     @property
-    def is_on(self) -> bool | None:
-        """Return True if the rhythm module is currently active."""
-        value = self.coordinator.rhythm.get("rhythmActive")
-        if value is None:
-            return None
-        return bool(value)
+    def is_on(self) -> bool:
+        """Return True if the rhythm module is currently picking up sound."""
+        return self.coordinator.nanoleaf.rhythm_active

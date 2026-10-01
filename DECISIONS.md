@@ -153,3 +153,32 @@ consistent.
 ### Still needs real hardware / runtime
 End-to-end with a real media player + device (artwork fetch latency, how often
 `entity_picture` changes per integration, and the on-device look of the palette).
+
+## Migrating to aionanoleaf2 (2.0.0)
+
+The component was wired to `latetedemelon/aionanoleaf`, a fork of
+`milanmeu/aionanoleaf`. That upstream last released in 2022, and Home Assistant
+replaced it with `aionanoleaf2` in core commit 8693294ea, shipped in 2026.3. So
+the old lineage is a dead end: staying on it means diverging further from the
+library Home Assistant actually ships, for a library nobody upstream maintains.
+
+`aionanoleaf2` did not have the five device-API calls this component relied on
+(`get/set_global_orientation`, rhythm info and mode, rhythm-effect discovery),
+and its `DigitalTwin` has a different shape. Those calls were added to
+`aionanoleaf2` 1.2.0 rather than reimplemented here, because they are device API
+and an integration should not be hand-rolling HTTP against the panels.
+
+Three deliberate differences from the old fork's versions:
+
+- An absent resource is distinguished from a transport failure. The old
+  `RhythmClient.get_info` did `except Exception: return {}`, which also
+  swallowed real errors.
+- `set_global_orientation` validates its range instead of silently clamping, so
+  a caller passing degrees from the wrong source finds out.
+- Durations are in seconds throughout, not milliseconds in some places.
+
+The helper *clients* were not ported. `aionanoleaf2` is one `Nanoleaf` class
+with `get_*`/`set_*` methods, and three extra wrapper classes would have been a
+second idiom for no benefit. This also removed the module-level imports of
+optional classes, which were the reason an older library used to stop the whole
+integration from loading rather than just disabling some entities.

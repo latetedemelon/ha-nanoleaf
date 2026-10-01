@@ -7,7 +7,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import RHYTHM_INT_TO_MODE, RHYTHM_MODE_MICROPHONE, RHYTHM_MODES
+from .const import RHYTHM_MODE_MICROPHONE
 from .coordinator import NanoleafConfigEntry, NanoleafCoordinator
 from .entity import NanoleafEntity
 
@@ -42,21 +42,16 @@ class NanoleafRhythmModeSelect(NanoleafEntity, SelectEntity):
     @property
     def options(self) -> list[str]:
         """Microphone is always available; aux only when the module exposes it."""
-        if self.coordinator.aux_available:
-            return RHYTHM_MODES
-        return [RHYTHM_MODE_MICROPHONE]
+        return self.coordinator.nanoleaf.rhythm_mode_list or [RHYTHM_MODE_MICROPHONE]
 
     @property
     def current_option(self) -> str | None:
         """Return the currently selected rhythm source."""
-        mode = self.coordinator.rhythm.get("rhythmMode")
-        if isinstance(mode, bool) or not isinstance(mode, int):
-            return None
-        return RHYTHM_INT_TO_MODE.get(mode)
+        return self.coordinator.nanoleaf.rhythm_mode
 
     async def async_select_option(self, option: str) -> None:
         """Change the rhythm source."""
-        await self.coordinator.rhythm_client.set_mode(option)
+        await self.coordinator.nanoleaf.set_rhythm_mode(option)
         await self.coordinator.async_request_refresh()
 
 
@@ -87,6 +82,6 @@ class NanoleafMusicEffectSelect(NanoleafEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Switch to the microphone and select the sound-reactive effect."""
-        await self.coordinator.rhythm_client.set_mode(RHYTHM_MODE_MICROPHONE)
+        await self.coordinator.nanoleaf.set_rhythm_mode(RHYTHM_MODE_MICROPHONE)
         await self._nanoleaf.set_effect(option)
         await self.coordinator.async_request_refresh()

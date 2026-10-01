@@ -121,12 +121,12 @@ When discovered, you'll see a notification in Home Assistant. Click **Configure*
 
 ### Dependency Installation Issues
 
-The integration uses a custom fork of aionanoleaf. If you encounter installation issues:
+The integration uses a custom fork of aionanoleaf2. If you encounter installation issues:
 
 1. Check your Home Assistant logs for pip install errors
 2. Ensure your Home Assistant has internet access
 3. Try restarting Home Assistant to trigger a fresh install
-4. Check GitHub to ensure the aionanoleaf fork repository is accessible
+4. Check GitHub to ensure the aionanoleaf2 fork repository is accessible
 
 ## Getting Help
 

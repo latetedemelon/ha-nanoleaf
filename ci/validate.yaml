@@ -1,0 +1,77 @@
+# MOVE THIS FILE to .github/workflows/validate.yaml to activate it.
+#
+# It could not be committed there directly: the token that opened the pull
+# request adding it has no GitHub "workflow" scope, which is required to add or
+# change anything under .github/workflows/. Delete these comment lines after
+# moving it.
+
+name: Validate
+
+on:
+  push:
+  pull_request:
+  # Catch breakage from a new Home Assistant release, or from the library
+  # branch this component tracks moving underneath it.
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install ruff
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff
+      # Configured by ruff.toml to match Home Assistant's own conventions.
+      - name: ruff check
+        run: ruff check custom_components scripts
+      - name: ruff format
+        run: ruff format --check custom_components scripts
+
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
+
+  smoke:
+    name: Load under Home Assistant
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install Home Assistant and the pinned library
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install homeassistant
+          # Install exactly what manifest.json asks for, so CI exercises the
+          # real dependency rather than a stand-in.
+          python - <<'PY' > requirements-manifest.txt
+          import json
+          manifest = json.load(open("custom_components/nanoleaf/manifest.json"))
+          print("\n".join(manifest["requirements"]))
+          PY
+          python -m pip install -r requirements-manifest.txt
+      # Fails if the component imports something the library no longer provides,
+      # or if the manifest would stop Home Assistant loading the integration.
+      - name: Smoke test
+        run: python scripts/smoke_test.py

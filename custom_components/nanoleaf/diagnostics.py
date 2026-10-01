@@ -47,11 +47,13 @@ async def async_get_config_entry_diagnostics(
         },
         "capabilities": {
             "has_panels": coordinator.has_panels,
-            "panel_count": len(getattr(device, "panels", []) or []),
+            "panel_count": len(device.panels),
             "global_orientation": coordinator.global_orientation,
             "has_rhythm": coordinator.has_rhythm,
-            "aux_available": coordinator.aux_available,
-            "rhythm": coordinator.rhythm,
+            "library_supports_extras": coordinator.supports_extras,
+            "aux_available": coordinator.supports_extras
+            and device.rhythm_aux_available,
+            "rhythm": device.rhythm if coordinator.supports_extras else {},
             "rhythm_effects": coordinator.rhythm_effects,
         },
     }

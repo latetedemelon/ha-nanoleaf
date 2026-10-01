@@ -1,0 +1,28 @@
+# Lint configuration matching Home Assistant's own conventions, so that the
+# component can be checked without "fixing" it into a style core would reject.
+target-version = "py312"
+
+[lint]
+# BLE and PLC0415 are selected so the `noqa` comments that reference them
+# stay meaningful rather than being flagged as unused.
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF", "PL", "BLE"]
+
+ignore = [
+    # Home Assistant ignores this one too: _attr_* class attributes are the
+    # documented way to configure an entity, and annotating every one of them
+    # with ClassVar adds noise without catching anything.
+    "RUF012",
+    # Entity classes legitimately take more than five arguments.
+    "PLR0913",
+    # Comparisons against a literal are clearer than a named constant here.
+    "PLR2004",
+]
+
+[lint.isort]
+# Home Assistant sorts `from x import y` alongside `import x` within a section
+# and treats homeassistant as first-party, which puts third-party library
+# imports above it. Without this, ruff wants an order core would reject.
+force-sort-within-sections = true
+known-first-party = ["homeassistant"]
+combine-as-imports = true
+split-on-trailing-comma = false

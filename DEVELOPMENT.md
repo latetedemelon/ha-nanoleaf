@@ -35,22 +35,24 @@ ha-nanoleaf/
 
 The only file that differs from the official Home Assistant core integration:
 
-1. **requirements**: Changed from `aionanoleaf==0.2.1` to `aionanoleaf @ git+https://github.com/latetedemelon/aionanoleaf.git`
+1. **requirements**: Changed from Home Assistant's pin (`aionanoleaf2==1.0.2` on 2026.3+, `aionanoleaf==0.2.1` before that) to `aionanoleaf2 @ https://github.com/latetedemelon/aionanoleaf2/archive/refs/heads/master.tar.gz`
 2. **codeowners**: Changed to `@latetedemelon`
 3. **documentation**: Changed to point to this repository
 4. **version**: Added version field `0.1.0`
 
-All other files are identical to the upstream Home Assistant core integration.
+The light platform and coordinator also differ, to expose the per-panel,
+rhythm and orientation features; the `binary_sensor`, `number`, `select` and
+`media` modules are new. Everything else tracks the upstream integration.
 
 ## Testing Workflow
 
-1. **Fork aionanoleaf**: Create a fork at https://github.com/latetedemelon/aionanoleaf
+1. **Fork aionanoleaf2**: the fork is at https://github.com/latetedemelon/aionanoleaf2
 2. **Make changes**: Implement new features or fixes in the forked library
 3. **Install this integration**: Install this custom component in Home Assistant
 4. **Test**: Home Assistant will automatically pull the forked library
 5. **Iterate**: Make changes to the fork and restart Home Assistant to test
 6. **Submit PR**: Once satisfied, submit PRs to upstream projects:
-   - aionanoleaf changes → https://github.com/milanmeu/aionanoleaf
+   - Library changes → https://github.com/loebi-ch/aionanoleaf2
    - Integration changes (if any) → https://github.com/home-assistant/core
 
 ## Development Tips
@@ -145,7 +147,7 @@ If you're working on this project:
 ## Links
 
 - **This Repository**: https://github.com/latetedemelon/ha-nanoleaf
-- **Forked Library**: https://github.com/latetedemelon/aionanoleaf
-- **Upstream Library**: https://github.com/milanmeu/aionanoleaf
+- **Forked Library**: https://github.com/latetedemelon/aionanoleaf2
+- **Upstream Library**: https://github.com/loebi-ch/aionanoleaf2 (previously https://github.com/milanmeu/aionanoleaf, which Home Assistant dropped in 2026.3)
 - **HA Core Integration**: https://github.com/home-assistant/core/tree/dev/homeassistant/components/nanoleaf
 - **HA Documentation**: https://www.home-assistant.io/integrations/nanoleaf
