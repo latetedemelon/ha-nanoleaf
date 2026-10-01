@@ -149,6 +149,10 @@
           "description": "Optional brightness overlay applied to the colors (0-100%)."
         }
       }
+    },
+    "get_panels": {
+      "name": "Get panels",
+      "description": "List this device's panels with their IDs and positions."
     }
   },
   "issues": {

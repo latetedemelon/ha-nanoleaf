@@ -18,7 +18,7 @@ from homeassistant.components.light import (
     LightEntityFeature,
 )
 from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER_DOMAIN
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -32,6 +32,7 @@ from .const import (
     ATTR_RGB_COLOR,
     DOMAIN,
     SERVICE_BLINK_PANELS,
+    SERVICE_GET_PANELS,
     SERVICE_SET_ALL_PANELS,
     SERVICE_SET_PANEL_COLORS,
     SERVICE_SYNC_ALBUM_ART,
@@ -103,6 +104,14 @@ async def async_setup_entry(
     )
     platform.async_register_entity_service(
         SERVICE_SYNC_ALBUM_ART, SYNC_ALBUM_ART_SCHEMA, "async_sync_album_art"
+    )
+    # Returns its result instead of changing anything: the per-panel services
+    # need panel IDs, and this is how you find out what yours are.
+    platform.async_register_entity_service(
+        SERVICE_GET_PANELS,
+        None,
+        "async_get_panels",
+        supports_response=SupportsResponse.ONLY,
     )
 
 
@@ -300,6 +309,28 @@ class NanoleafLight(NanoleafEntity, LightEntity):
             }
         )
         await self._async_sync(twin, brightness)
+
+    async def async_get_panels(self) -> dict[str, Any]:
+        """Return this device's panels, so their IDs can be used elsewhere.
+
+        Sorted by ID, which is the order the per-panel services address them
+        in, and includes each panel's position so a layout can be worked out
+        without guessing.
+        """
+        panels = sorted(self._nanoleaf.panels, key=lambda panel: panel.id)
+        return {
+            "count": len(panels),
+            "panels": [
+                {
+                    "panel_id": panel.id,
+                    "x": panel.x_coordinate,
+                    "y": panel.y_coordinate,
+                    "orientation": panel.orientation,
+                    "shape": panel.shape.name,
+                }
+                for panel in panels
+            ],
+        }
 
     async def _async_sync(self, twin: DigitalTwin, brightness: int | None) -> None:
         """Write the twin's colours to the device and refresh state."""

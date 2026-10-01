@@ -40,7 +40,7 @@ set_panel_colors:
       name: Panels
       description: >-
         A list of panel/color pairs. Each item needs a panel_id and an
-        rgb_color. Panel IDs can be read from the integration diagnostics.
+        rgb_color. Call the "Get panels" action to list your panel IDs.
       required: true
       example: |-
         - panel_id: 4231
@@ -129,3 +129,14 @@ sync_album_art:
           min: 0
           max: 100
           unit_of_measurement: "%"
+
+get_panels:
+  name: Get panels
+  description: >-
+    List this device's panels with their IDs and positions. Returns its result
+    rather than changing anything, so it is safe to call from Developer Tools to
+    find the panel IDs the other actions need.
+  target:
+    entity:
+      integration: nanoleaf
+      domain: light

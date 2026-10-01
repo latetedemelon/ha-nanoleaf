@@ -143,15 +143,79 @@ automation:
 On panel devices (Shapes, Canvas, Elements, Lines) this integration exposes the
 fork's enhanced functionality.
 
-### Services
+### There is one light entity, not one per panel
 
-| Service | Description |
+The device appears as a single `light` entity. Individual panels are addressed
+through **actions** (services) targeting that entity, not through separate
+entities.
+
+That is deliberate. Nanoleaf has no per-panel read-back — the device cannot tell
+you what colour a given panel is currently showing — and the API applies panel
+colours as one whole-scene write rather than panel by panel. Per-panel entities
+would therefore be write-only, with state that is a local guess rather than
+something read from the device, and a 30-panel wall would add 30 of them. The
+actions below write the whole layout in one call, which is what the hardware
+actually does.
+
+### Finding your panel IDs
+
+The per-panel actions need panel IDs, and they are assigned by the device rather
+than being 1, 2, 3. Call the **Get panels** action to list them — it returns its
+result instead of changing anything, so it is safe to run from
+**Developer Tools → Actions**:
+
+```yaml
+action: nanoleaf.get_panels
+target:
+  entity_id: light.shapes
+```
+
+```yaml
+count: 4
+panels:
+  - panel_id: 4231
+    x: 0
+    y: 0
+    orientation: 0
+    shape: Hexagon (Shapes)
+  - panel_id: 8190
+    x: 200
+    y: 0
+    orientation: 120
+    shape: Hexagon (Shapes)
+  - panel_id: 12044
+    x: 100
+    y: 58
+    orientation: 60
+    shape: Hexagon (Shapes)
+  - panel_id: 65533
+    x: 300
+    y: 58
+    orientation: 0
+    shape: Shapes Controller
+```
+
+`x` and `y` are the device's own layout coordinates, so you can work out which
+physical panel is which rather than guessing. Watch for entries whose `shape` is
+a controller or connector — `Shapes Controller`, `Controller Cap`,
+`Lines Connector`, `Power Connector`. Those appear in the layout but have no
+LEDs, so colours written to them do nothing.
+
+The same list is in the integration's diagnostics download if you prefer a file.
+
+### Actions
+
+| Action | Description |
 | --- | --- |
+| `nanoleaf.get_panels` | List panel IDs and positions. Returns a result; changes nothing. |
 | `nanoleaf.set_all_panels` | Set every panel to one RGB color (static scene). |
 | `nanoleaf.set_panel_colors` | Set individual panels by `panel_id`. Unlisted panels are turned off. |
 | `nanoleaf.blink_panels` | Briefly flash a color on all panels, then restore the previous effect. |
+| `nanoleaf.sync_album_art` | Colour the panels from a media player's album art. |
 
-Panel IDs can be read from the integration's diagnostics download.
+Because a static scene describes the whole layout, `set_panel_colors` turns off
+any panel you do not list. To change some panels and leave the others as they
+are, include them all and repeat their current colours.
 
 ```yaml
 # Paint two panels and turn the rest off

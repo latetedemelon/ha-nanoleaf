@@ -41,6 +41,9 @@
     },
     "sync_album_art": {
       "service": "mdi:album"
+    },
+    "get_panels": {
+      "service": "mdi:view-grid-outline"
     }
   }
 }

@@ -31,6 +31,14 @@ Migrated to the `aionanoleaf2` library.
 - `manifest.json` declares `integration_type: device`, matching Home
   Assistant's own manifest; without it the UI presented the device as a hub.
 
+### Added
+
+- `nanoleaf.get_panels` action, which returns the device's panel IDs and their
+  layout coordinates. The per-panel actions need IDs that the device assigns,
+  and nothing surfaced them: `services.yaml` pointed at the diagnostics
+  download, but diagnostics only reported a panel *count*. Diagnostics now
+  includes the panel list too.
+
 ### Fixed
 
 - `hacs.json` declared a minimum of Home Assistant 2024.1.0, but the code uses

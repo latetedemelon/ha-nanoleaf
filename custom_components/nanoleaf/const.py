@@ -26,6 +26,7 @@ SERVICE_SET_ALL_PANELS = "set_all_panels"
 SERVICE_SET_PANEL_COLORS = "set_panel_colors"
 SERVICE_BLINK_PANELS = "blink_panels"
 SERVICE_SYNC_ALBUM_ART = "sync_album_art"
+SERVICE_GET_PANELS = "get_panels"
 
 # Service field names. ``brightness`` and ``transition`` reuse the light
 # platform's constants (same string keys) and are not redefined here.

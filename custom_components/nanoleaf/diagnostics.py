@@ -45,6 +45,16 @@ async def async_get_config_entry_diagnostics(
             "saturation": device.saturation,
             "serial_no": device.serial_no,
         },
+        "panels": [
+            {
+                "panel_id": panel.id,
+                "x": panel.x_coordinate,
+                "y": panel.y_coordinate,
+                "orientation": panel.orientation,
+                "shape": panel.shape.name,
+            }
+            for panel in sorted(device.panels, key=lambda panel: panel.id)
+        ],
         "capabilities": {
             "has_panels": coordinator.has_panels,
             "panel_count": len(device.panels),
