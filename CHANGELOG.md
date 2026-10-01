@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0]
+
+Per-panel control from the dashboard.
+
+### Added
+
+- Optional **one light entity per panel**, behind a new config entry option
+  ("Create an entity per panel", off by default). Each panel gets a colour wheel
+  and a brightness slider, so panels can be controlled from a dashboard as well
+  as from actions. Panel state is what Home Assistant last wrote and is restored
+  across restarts, because the device has no per-panel read-back; changing one
+  panel rewrites the whole scene, as that is the only write the API offers, and
+  rapid changes are batched into a single write. Controllers, connectors and the
+  Light Panels rhythm module are skipped, since they have no LEDs.
+- `nanoleaf.get_panels` action, which returns the device's panel IDs and their
+  layout coordinates. The per-panel actions need IDs that the device assigns,
+  and nothing surfaced them: `services.yaml` pointed at the diagnostics
+  download, but diagnostics only reported a panel *count*. Diagnostics now
+  includes the panel list too.
+
 ## [2.0.0]
 
 Migrated to the `aionanoleaf2` library.
@@ -30,22 +50,6 @@ Migrated to the `aionanoleaf2` library.
   best-effort guess.
 - `manifest.json` declares `integration_type: device`, matching Home
   Assistant's own manifest; without it the UI presented the device as a hub.
-
-### Added
-
-- Optional **one light entity per panel**, behind a new config entry option
-  ("Create an entity per panel", off by default). Each panel gets a colour wheel
-  and a brightness slider, so panels can be controlled from a dashboard as well
-  as from actions. Panel state is what Home Assistant last wrote and is restored
-  across restarts, because the device has no per-panel read-back; changing one
-  panel rewrites the whole scene, as that is the only write the API offers, and
-  rapid changes are batched into a single write. Controllers, connectors and the
-  Light Panels rhythm module are skipped, since they have no LEDs.
-- `nanoleaf.get_panels` action, which returns the device's panel IDs and their
-  layout coordinates. The per-panel actions need IDs that the device assigns,
-  and nothing surfaced them: `services.yaml` pointed at the diagnostics
-  download, but diagnostics only reported a panel *count*. Diagnostics now
-  includes the panel list too.
 
 ### Fixed
 
