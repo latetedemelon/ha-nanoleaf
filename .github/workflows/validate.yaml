@@ -1,10 +1,3 @@
-# MOVE THIS FILE to .github/workflows/validate.yaml to activate it.
-#
-# It could not be committed there directly: the token that opened the pull
-# request adding it has no GitHub "workflow" scope, which is required to add or
-# change anything under .github/workflows/. Delete these comment lines after
-# moving it.
-
 name: Validate
 
 on:
