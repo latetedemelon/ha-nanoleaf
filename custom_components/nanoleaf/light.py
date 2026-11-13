@@ -68,6 +68,7 @@ def _scale_rgb(
     factor = brightness / 100
     return (round(rgb[0] * factor), round(rgb[1] * factor), round(rgb[2] * factor))
 
+
 SET_ALL_PANELS_SCHEMA = {
     vol.Required(ATTR_RGB_COLOR): _RGB,
     vol.Optional(ATTR_BRIGHTNESS): _PANEL_BRIGHTNESS,
