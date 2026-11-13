@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from aionanoleaf2 import DigitalTwin, NanoleafException, Panel, UnknownPanel
@@ -52,6 +53,21 @@ DEFAULT_NAME = "Nanoleaf"
 _RGB = vol.All(vol.ExactSequence((cv.byte, cv.byte, cv.byte)), vol.Coerce(tuple))
 # Nanoleaf brightness overlay is a 0..100 percentage, distinct from light 0..255.
 _PANEL_BRIGHTNESS = vol.All(vol.Coerce(int), vol.Range(min=0, max=100))
+
+
+def _scale_rgb(
+    rgb: tuple[int, int, int], brightness: int | None
+) -> tuple[int, int, int]:
+    """Apply an optional 0-100 brightness overlay to an RGB colour.
+
+    aionanoleaf2's DigitalTwin has no brightness concept of its own, so the
+    overlay is applied here by scaling the colour before it is written.
+    """
+    if brightness is None:
+        return rgb
+    factor = brightness / 100
+    return (round(rgb[0] * factor), round(rgb[1] * factor), round(rgb[2] * factor))
+
 
 SET_ALL_PANELS_SCHEMA = {
     vol.Required(ATTR_RGB_COLOR): _RGB,
@@ -256,8 +272,8 @@ class NanoleafLight(NanoleafEntity, LightEntity):
     ) -> None:
         """Set every panel to a single colour."""
         twin = await self._async_twin()
-        twin.set_all(rgb_color)
-        await self._async_sync(twin, brightness)
+        twin.set_all(_scale_rgb(rgb_color, brightness))
+        await self._async_sync(twin)
 
     async def async_set_panel_colors(
         self,
@@ -279,8 +295,13 @@ class NanoleafLight(NanoleafEntity, LightEntity):
                     "valid": ", ".join(str(p) for p in twin.panel_ids),
                 },
             )
-        twin.set_colors(colors)
-        await self._async_sync(twin, brightness)
+        twin.set_colors(
+            {
+                panel_id: _scale_rgb(color, brightness)
+                for panel_id, color in colors.items()
+            }
+        )
+        await self._async_sync(twin)
 
     async def async_blink_panels(
         self,
@@ -290,11 +311,15 @@ class NanoleafLight(NanoleafEntity, LightEntity):
     ) -> None:
         """Briefly show a colour on all panels, then restore the prior effect."""
         twin = await self._async_twin()
-        twin.set_all(rgb_color)
+        color = _scale_rgb(rgb_color, brightness)
         try:
-            # Uses the device's temporary-display command, so the selected
-            # effect is never replaced and restoring it is just a re-select.
-            await twin.show_temporarily(duration, brightness=brightness)
+            # Stream one frame over external control and hold it; on exit the
+            # library re-selects whatever effect was active, so the colour is
+            # shown temporarily without permanently replacing the effect.
+            async with twin.streaming(restore_effect=True):
+                twin.set_all(color)
+                await twin.sync()
+                await asyncio.sleep(duration)
         except NanoleafException as err:
             raise HomeAssistantError(str(err)) from err
         await self.coordinator.async_request_refresh()
@@ -322,11 +347,11 @@ class NanoleafLight(NanoleafEntity, LightEntity):
         twin = await self._async_twin()
         twin.set_colors(
             {
-                panel_id: palette[index % len(palette)]
+                panel_id: _scale_rgb(palette[index % len(palette)], brightness)
                 for index, panel_id in enumerate(twin.panel_ids)
             }
         )
-        await self._async_sync(twin, brightness)
+        await self._async_sync(twin)
 
     async def async_get_panels(self) -> dict[str, Any]:
         """Return this device's panels, so their IDs can be used elsewhere.
@@ -350,10 +375,10 @@ class NanoleafLight(NanoleafEntity, LightEntity):
             ],
         }
 
-    async def _async_sync(self, twin: DigitalTwin, brightness: int | None) -> None:
+    async def _async_sync(self, twin: DigitalTwin) -> None:
         """Write the twin's colours to the device and refresh state."""
         try:
-            await twin.sync(brightness=brightness)
+            await twin.sync()
         except UnknownPanel as err:
             raise ServiceValidationError(str(err)) from err
         except NanoleafException as err:
